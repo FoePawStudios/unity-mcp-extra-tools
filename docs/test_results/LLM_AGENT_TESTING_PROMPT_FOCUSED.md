@@ -37,7 +37,7 @@ Most tools have been fixed and are working correctly. The following tools need t
 
 1. **`set_component_properties`**: Needs comprehensive testing to verify it works correctly
 2. **`create_material`**: ✅ **FIXED** - Now requires parent folders to exist (created via `manage_asset`). Returns clear error if folder doesn't exist. **NEEDS TESTING** to verify the fix works correctly
-3. **`load_scene`**: ✅ **FIXED** - Path normalization and construction logic improved. **NEEDS TESTING** to verify the fix works correctly
+3. **`load_scene`**: ✅ **COMPREHENSIVELY FIXED** - Fixed path parameter recognition, path duplication prevention, Windows path handling, and added extensive logging. **NEEDS TESTING** to verify all fixes work correctly
 4. **`set_material_color`**: ✅ **FIXED** - Color parsing now correctly handles 0-255 range colors with zero components. **NEEDS TESTING** to verify the fix works correctly
 5. **`assign_material`**: ✅ **UNBLOCKED** - Can now test since `create_material` has been fixed
 
@@ -99,38 +99,58 @@ Test cases:
 
 ### Tool: `load_scene`
 
-**Note**: This tool has been **FIXED**. Path normalization has been added using `AssetPathUtility.SanitizeAssetPath()` and the `.unity` extension is automatically added if missing. **NEEDS TESTING** to verify the fix works correctly.
+**Note**: This tool has been **COMPREHENSIVELY FIXED** with extensive logging added for debugging. **NEEDS TESTING** to verify all fixes work correctly.
 
-**Recent Fix**: Path parameter is now normalized early in the processing, and `relativePath` is set correctly from the normalized path.
+**Recent Fixes Applied**:
+1. **Path parameter recognition**: Fixed issue where Unity didn't recognize `path` parameter even when explicitly provided
+   - Added defensive checks to ensure path is never lost during normalization
+   - Path is preserved even if normalization fails
+   - Fixed Windows path handling by normalizing separators before `Path.GetDirectoryName()` calls
+
+2. **Path duplication prevention**: Fixed issue where loading by name created duplicated paths like `"Assets/Scenes/TestScene_001.unity/TestScene_001.unity"`
+   - Python tool now only sends `path` OR `name`, never both
+   - When path is constructed from name, only `path` is sent (name is omitted)
+   - Unity code ignores `name` parameter when `path` is provided
+
+3. **Extensive logging**: Added comprehensive logging throughout the entire path transformation pipeline
+   - Unity: Logs at entry, normalization, directory extraction, relativePath construction, fullPath construction, routing, and LoadScene method
+   - Python: Logs parameter reception, path construction, parameter dictionary, and transport layer
+   - All logs use structured format: `[ManageScene] [STEP_NAME] key='value'`
+   - Logs include explicit null/empty indicators for debugging
 
 **Prerequisites**: Create test scenes first using `create_scene`.
+
+**Debugging**: If tests fail, check Unity Console for `[ManageScene]` log entries to trace the exact point of failure.
 
 Test cases:
 1. ✅ Load by path: `{"path": "Assets/Scenes/TestScene_001.unity"}`
    - **Expected**: Should load the scene successfully
-   - **Previous issue**: Unity reported "Either 'name'/'path' or 'buildIndex' must be provided"
-   - **Fix applied**: Path normalization added early in processing
+   - **Previous issue**: Unity reported "Either 'name'/'path' or 'buildIndex' must be provided" even though path was sent
+   - **Fix applied**: Defensive path normalization with preservation of original path if normalization fails
 
 2. ✅ Load by path without extension: `{"path": "Assets/Scenes/TestScene_001"}`
    - **Expected**: Should automatically add `.unity` extension and load the scene
-   - **Fix applied**: Extension is added automatically if missing
+   - **Fix applied**: Extension is added automatically if missing during normalization
 
 3. ✅ Load by name: `{"name": "TestScene_001"}`
-   - **Expected**: Should find scene in Assets/Scenes/ directory
-   - **Previous issue**: Looked in wrong location
-   - **Fix applied**: Path normalization ensures correct path resolution
+   - **Expected**: Should find scene in Assets/Scenes/ directory and load successfully
+   - **Previous issue**: Path duplication occurred - `"Assets/Scenes/TestScene_001.unity/TestScene_001.unity"`
+   - **Fix applied**: Python only sends `name` (not both path and name), preventing duplication
 
 4. ✅ Load by buildIndex: `{"buildIndex": 0}` (if scene is in build settings)
    - **Test**: Verify this works if scene is in build settings
+   - **Note**: This path was already working, but verify it still works after fixes
 
 5. ❌ Load non-existent (should fail gracefully): `{"name": "NonExistentScene"}`
-   - **Expected**: Should return clear error message
+   - **Expected**: Should return clear error message: "Scene file not found at 'Assets/Scenes/NonExistentScene.unity'"
+   - **Check logs**: Verify logging shows correct path construction
 
 6. ❌ Invalid path: `{"path": "Invalid/Path.unity"}`
-   - **Expected**: Should return clear error message
+   - **Expected**: Should return clear error message about file not found
+   - **Check logs**: Verify path normalization and file existence check in logs
 
 7. ❌ Invalid buildIndex: `{"buildIndex": 999}`
-   - **Expected**: Should return clear error message
+   - **Expected**: Should return clear error message about invalid build index
 
 ---
 
@@ -246,7 +266,7 @@ Planned test cases (when material creation works):
 ### Tools Needing Testing (Fixed but Not Verified):
 1. **`set_component_properties`**: Needs comprehensive testing (parameter mapping fixed, but not fully tested)
 2. **`create_material`**: ✅ **FIXED** - Now requires parent folders to exist (created via `manage_asset`). Returns clear error if folder doesn't exist. **NEEDS TESTING** to verify fix works
-3. **`load_scene`**: ✅ **FIXED** - Path normalization and construction logic improved. **NEEDS TESTING** to verify fix works
+3. **`load_scene`**: ✅ **COMPREHENSIVELY FIXED** - Fixed path parameter recognition, path duplication prevention, Windows path handling, and added extensive logging. **NEEDS TESTING** to verify all fixes work
 4. **`set_material_color`**: ✅ **FIXED** - Color parsing now correctly handles 0-255 range colors with zero components. **NEEDS TESTING** to verify fix works
 5. **`assign_material`**: ✅ **UNBLOCKED** - Can now test since `create_material` is fixed
 
@@ -278,11 +298,20 @@ Planned test cases (when material creation works):
    - Returns clear error message directing users to create folders via `manage_asset` with `action: create_folder`
    - Tool description updated to set expectation that paths must exist
 
-2. **`load_scene` path resolution**: ✅ **FIXED**
-   - Fixed path normalization inconsistency (Windows backslashes now normalized to forward slashes)
-   - Improved path construction logic to prioritize `path` parameter
-   - Fixed path duplication issue when loading by name
-   - Path validation distinguishes between paths (containing '/') and scene names
+2. **`load_scene` path handling**: ✅ **COMPREHENSIVELY FIXED**
+   - **Path parameter recognition**: Fixed critical bug where Unity didn't recognize `path` parameter even when explicitly provided
+     - Added defensive checks to ensure path is never lost during normalization
+     - Path is preserved even if `SanitizeAssetPath` returns null/empty
+     - Fixed Windows path handling by normalizing separators BEFORE `Path.GetDirectoryName()` calls
+   - **Path duplication prevention**: Fixed issue where loading by name created duplicated paths
+     - Python tool now only sends `path` OR `name`, never both (prevents Unity from processing both)
+     - When path is constructed from name, only `path` is sent to Unity
+     - Unity code completely ignores `name` parameter when `path` is provided
+   - **Extensive logging**: Added comprehensive logging throughout entire pipeline for debugging
+     - Unity: 7 logging points (entry, normalize, dir_extract, rel_path, full_path, route, load)
+     - Python: 4 logging points (entry, path_construct, params, transport)
+     - Structured format: `[ManageScene] [STEP_NAME] key='value'` with explicit null/empty indicators
+     - All logging wrapped in try-catch to prevent failures from breaking flow
 
 3. **`set_material_color` color parsing**: ✅ **FIXED**
    - Fixed color parsing heuristic to correctly detect 0-255 range colors with zero components
