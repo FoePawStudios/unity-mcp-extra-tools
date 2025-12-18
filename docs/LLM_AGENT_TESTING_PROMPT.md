@@ -12,6 +12,24 @@ You are tasked with performing comprehensive integration testing of 27 simplifie
 
 **Your goal**: Systematically test each tool, document all results (successes, failures, and workarounds) in a markdown file at `docs/test_results/simplified_tools_test_results.md`.
 
+## Recent Fixes Applied
+
+The following bugs have been fixed and should now work correctly:
+
+1. **`find_gameobject`**: Fixed parameter name conversion (snake_case to camelCase) - should now find GameObjects correctly
+2. **`add_component`**: Fixed parameter name conversion (`component_name` to `componentName`) - should now add components successfully
+3. **`create_gameobject`**: 
+   - Fixed parameter name conversion (`set_active` to `setActive`, `primitive_type` to `primitiveType`)
+   - Fixed active state handling - now works correctly
+   - Added primitive type validation - invalid types now return clear error messages
+   - **Vector format**: Comma-separated strings without brackets (e.g., `"10,2,0"`) are now rejected with clear error - use array format `[10, 2, 0]` or JSON string `"[10, 2, 0]"`
+4. **`modify_gameobject`**: 
+   - Fixed parameter name conversion (`set_active` to `setActive`)
+   - Fixed active state handling - now works correctly
+   - **Vector format**: Same as create_gameobject - comma-separated strings without brackets are rejected
+   - **Unparenting**: Use empty string `""` for explicit unparenting (moves to scene root)
+5. **`parse_color`**: Fixed heuristic to only convert 0-255 range when ALL RGB components are > 1.0 AND <= 255.0 (preserves edge cases like HDR colors)
+
 ## Testing Guidelines
 
 1. **Test Order**: Work through tools in the order listed below (by category)
@@ -62,35 +80,38 @@ When a test fails:
 Test cases to perform:
 1. ✅ Basic creation with name only: `{"name": "TestObject_001"}`
 2. ✅ Creation with position (array): `{"name": "TestObject_002", "position": [5, 0, 0]}`
-3. ✅ Creation with position (string): `{"name": "TestObject_003", "position": "10,2,0"}`
-4. ✅ Creation with rotation: `{"name": "TestObject_004", "rotation": [0, 45, 0]}`
-5. ✅ Creation with scale: `{"name": "TestObject_005", "scale": [2, 2, 2]}`
-6. ✅ Creation with parent: Create parent first, then child with `{"name": "Child", "parent": "Parent"}`
-7. ✅ Creation with tag: `{"name": "TestObject_006", "tag": "Untagged"}` (use existing tag)
-8. ✅ Creation with layer: `{"name": "TestObject_007", "layer": "Default"}` (use existing layer)
-9. ✅ Creation with primitive: `{"name": "TestCube", "primitive_type": "Cube"}`
-10. ✅ Creation with active=false: `{"name": "TestObject_008", "active": false}`
-11. ✅ All parameters combined
-12. ❌ Invalid name (empty string): `{"name": ""}`
-13. ❌ Invalid parent (non-existent): `{"name": "TestObject_009", "parent": "NonExistent"}`
-14. ❌ Invalid primitive type: `{"name": "TestObject_010", "primitive_type": "InvalidType"}`
+3. ✅ Creation with position (JSON string): `{"name": "TestObject_003", "position": "[10, 2, 0]"}`
+4. ❌ Creation with position (comma-separated string - should fail): `{"name": "TestObject_003b", "position": "10,2,0"}` - Should return error: "Position must be an array [x, y, z] or JSON array string '[x, y, z]', not a comma-separated string"
+5. ✅ Creation with rotation: `{"name": "TestObject_004", "rotation": [0, 45, 0]}`
+6. ✅ Creation with scale: `{"name": "TestObject_005", "scale": [2, 2, 2]}`
+7. ✅ Creation with parent: Create parent first, then child with `{"name": "Child", "parent": "Parent"}`
+8. ✅ Creation with tag: `{"name": "TestObject_006", "tag": "Untagged"}` (use existing tag)
+9. ✅ Creation with layer: `{"name": "TestObject_007", "layer": "Default"}` (use existing layer)
+10. ✅ Creation with primitive: `{"name": "TestCube", "primitive_type": "Cube"}`
+11. ✅ Creation with active=false: `{"name": "TestObject_008", "active": false}` - Should now work correctly (was broken before)
+12. ✅ All parameters combined
+13. ❌ Invalid name (empty string): `{"name": ""}`
+14. ❌ Invalid parent (non-existent): `{"name": "TestObject_009", "parent": "NonExistent"}`
+15. ❌ Invalid primitive type: `{"name": "TestObject_010", "primitive_type": "InvalidType"}` - Should now return clear error message (was silently failing before)
 
 After testing, clean up all test objects.
 
 ### Tool 2: `find_gameobject`
 
+**Note**: This tool was previously broken (could not find any GameObjects). It has been fixed and should now work correctly.
+
 Prerequisites: Create several test objects with different names, tags, and components first.
 
 Test cases:
-1. ✅ Find by name (single): `{"search_by": "name", "value": "TestObject_001"}`
-2. ✅ Find by name (find_all=true): `{"search_by": "name", "value": "TestObject", "find_all": true}`
-3. ✅ Find by tag: `{"search_by": "tag", "value": "Untagged"}`
-4. ✅ Find by layer: `{"search_by": "layer", "value": "Default"}`
-5. ✅ Find by component: `{"search_by": "component", "value": "Transform"}`
-6. ✅ Include inactive: `{"search_by": "name", "value": "TestObject_008", "include_inactive": true}`
+1. ✅ Find by name (single): `{"search_by": "name", "value": "TestObject_001"}` - Should now work (was failing before)
+2. ✅ Find by name (find_all=true): `{"search_by": "name", "value": "TestObject", "find_all": true}` - Should now work
+3. ✅ Find by tag: `{"search_by": "tag", "value": "Untagged"}` - Should now work
+4. ✅ Find by layer: `{"search_by": "layer", "value": "Default"}` - Should now work
+5. ✅ Find by component: `{"search_by": "component", "value": "Transform"}` - Should now work
+6. ✅ Include inactive: `{"search_by": "name", "value": "TestObject_008", "include_inactive": true}` - Should now work
 7. ✅ Search in children: Create parent with children, then search
 8. ✅ Combination of options
-9. ❌ Find non-existent: `{"search_by": "name", "value": "NonExistentObject"}`
+9. ❌ Find non-existent: `{"search_by": "name", "value": "NonExistentObject"}` - Should return empty results (not error)
 10. ❌ Invalid search_by: `{"search_by": "invalid", "value": "Test"}`
 11. ❌ Empty value: `{"search_by": "name", "value": ""}`
 
@@ -102,15 +123,17 @@ Test cases:
 1. ✅ Modify position: `{"target": "TestObject_001", "position": [10, 5, 0]}`
 2. ✅ Modify rotation: `{"target": "TestObject_001", "rotation": [0, 90, 0]}`
 3. ✅ Modify scale: `{"target": "TestObject_001", "scale": [3, 3, 3]}`
-4. ✅ Modify name: `{"target": "TestObject_001", "name": "RenamedObject"}`
-5. ✅ Change parent: Create parent, then `{"target": "TestObject_001", "parent": "Parent"}`
-6. ✅ Unparent: `{"target": "TestObject_001", "parent": null}`
-7. ✅ Change tag: `{"target": "TestObject_001", "tag": "Untagged"}`
-8. ✅ Change layer: `{"target": "TestObject_001", "layer": "Default"}`
-9. ✅ Set active: `{"target": "TestObject_001", "active": false}`
-10. ✅ Multiple properties: Combine position, rotation, and scale
-11. ❌ Modify non-existent: `{"target": "NonExistent", "position": [0, 0, 0]}`
-12. ❌ Invalid parent: `{"target": "TestObject_001", "parent": "NonExistent"}`
+4. ✅ Modify position (JSON string): `{"target": "TestObject_001", "position": "[15, 5, 0]"}`
+5. ❌ Modify position (comma-separated - should fail): `{"target": "TestObject_001", "position": "20,5,0"}` - Should return error about array format
+6. ✅ Modify name: `{"target": "TestObject_001", "name": "RenamedObject"}`
+7. ✅ Change parent: Create parent, then `{"target": "TestObject_001", "parent": "Parent"}`
+8. ✅ Unparent: `{"target": "TestObject_001", "parent": ""}` - Use empty string for explicit unparenting (moves to scene root). Note: `null` may not work due to Python/JSON serialization - use `""` instead.
+9. ✅ Change tag: `{"target": "TestObject_001", "tag": "Untagged"}`
+10. ✅ Change layer: `{"target": "TestObject_001", "layer": "Default"}`
+11. ✅ Set active: `{"target": "TestObject_001", "active": false}` - Should now work correctly (was broken before)
+12. ✅ Multiple properties: Combine position, rotation, and scale
+13. ❌ Modify non-existent: `{"target": "NonExistent", "position": [0, 0, 0]}`
+14. ❌ Invalid parent: `{"target": "TestObject_001", "parent": "NonExistent"}`
 
 ### Tool 4: `delete_gameobject`
 
@@ -128,15 +151,17 @@ Test cases:
 
 ### Tool 5: `add_component`
 
+**Note**: This tool was previously broken (parameter mapping issue). It has been fixed and should now work correctly.
+
 Prerequisites: Create test GameObject first.
 
 Test cases:
-1. ✅ Add Rigidbody2D: `{"target": "TestObject", "component_type": "Rigidbody2D"}`
-2. ✅ Add Rigidbody: `{"target": "TestObject", "component_type": "Rigidbody"}`
-3. ✅ Add SpriteRenderer: `{"target": "TestObject", "component_type": "SpriteRenderer"}`
-4. ✅ Add MeshRenderer: `{"target": "TestObject", "component_type": "MeshRenderer"}`
-5. ✅ Add BoxCollider2D: `{"target": "TestObject", "component_type": "BoxCollider2D"}`
-6. ✅ Add BoxCollider: `{"target": "TestObject", "component_type": "BoxCollider"}`
+1. ✅ Add Rigidbody2D: `{"target": "TestObject", "component_type": "Rigidbody2D"}` - Should now work (was failing before)
+2. ✅ Add Rigidbody: `{"target": "TestObject", "component_type": "Rigidbody"}` - Should now work
+3. ✅ Add SpriteRenderer: `{"target": "TestObject", "component_type": "SpriteRenderer"}` - Should now work
+4. ✅ Add MeshRenderer: `{"target": "TestObject", "component_type": "MeshRenderer"}` - Should now work
+5. ✅ Add BoxCollider2D: `{"target": "TestObject", "component_type": "BoxCollider2D"}` - Should now work
+6. ✅ Add BoxCollider: `{"target": "TestObject", "component_type": "BoxCollider"}` - Should now work
 7. ✅ Add with properties: `{"target": "TestObject", "component_type": "Rigidbody2D", "properties": {"mass": 2.5}}`
 8. ✅ Add multiple components sequentially
 9. ❌ Add to non-existent: `{"target": "NonExistent", "component_type": "Rigidbody2D"}`
@@ -302,15 +327,20 @@ Test cases:
 
 ### Tool 19: `set_material_color`
 
+**Note**: The `parse_color` function has been fixed to better handle edge cases. It now only converts 0-255 range when ALL RGB components are > 1.0 AND <= 255.0, preserving HDR colors and values outside normal 0-1 range.
+
 Prerequisites: Create a material first.
 
 Test cases:
-1. ✅ Set color (array): `{"material_path": "Assets/Materials/TestMaterial_001.mat", "color": [0, 1, 0, 1]}`
-2. ✅ Set color (string): `{"material_path": "Assets/Materials/TestMaterial_001.mat", "color": "0,1,0,1"}`
-3. ✅ Set color with alpha: `{"material_path": "Assets/Materials/TestMaterial_001.mat", "color": [1, 1, 0, 0.5]}`
-4. ✅ Set color multiple times
-5. ❌ Non-existent material: `{"material_path": "Assets/Materials/NonExistent.mat", "color": [1, 0, 0, 1]}`
-6. ❌ Invalid format: `{"material_path": "Assets/Materials/TestMaterial_001.mat", "color": "invalid"}`
+1. ✅ Set color (array 0-1): `{"material_path": "Assets/Materials/TestMaterial_001.mat", "color": [0, 1, 0, 1]}`
+2. ✅ Set color (array 0-255): `{"material_path": "Assets/Materials/TestMaterial_001.mat", "color": [0, 255, 0, 255]}` - Should convert to [0, 1, 0, 1]
+3. ✅ Set color (JSON string): `{"material_path": "Assets/Materials/TestMaterial_001.mat", "color": "[0,1,0,1]"}`
+4. ✅ Set color with alpha: `{"material_path": "Assets/Materials/TestMaterial_001.mat", "color": [1, 1, 0, 0.5]}`
+5. ✅ Set HDR color (edge case): `{"material_path": "Assets/Materials/TestMaterial_001.mat", "color": [1.5, 0, 0, 1]}` - Should preserve 1.5 (not convert to 0-255 range)
+6. ✅ Set mixed range (edge case): `{"material_path": "Assets/Materials/TestMaterial_001.mat", "color": [1.5, 0, 0, 1]}` - Should preserve values (not convert)
+7. ✅ Set color multiple times
+8. ❌ Non-existent material: `{"material_path": "Assets/Materials/NonExistent.mat", "color": [1, 0, 0, 1]}`
+9. ❌ Invalid format: `{"material_path": "Assets/Materials/TestMaterial_001.mat", "color": "invalid"}`
 
 ### Tool 20: `assign_material`
 
@@ -459,11 +489,17 @@ After testing all individual tools, test these multi-tool workflows:
 
 ## Important Notes
 
+- **Vector Format Requirements**: Position, rotation, and scale parameters must be:
+  - Arrays: `[x, y, z]` (Python list)
+  - JSON array strings: `"[x, y, z]"` or `'[x, y, z]'` (must include brackets)
+  - **NOT supported**: Comma-separated strings like `"10,2,0"` (without brackets) - these will be rejected with clear error messages
+- **Unparenting**: To unparent a GameObject, use empty string `""` instead of `null` (due to Python/JSON serialization)
 - **If a simplified tool fails**, try the equivalent legacy tool and document the workaround
 - **Document all errors** with exact error messages
 - **Use unique names** for all test objects to avoid conflicts
 - **Clean up after each phase** to maintain test isolation
 - **Be thorough** - test both success and failure scenarios
+- **Fixed Tools**: `find_gameobject` and `add_component` were previously broken but should now work correctly
 
 Begin testing now, starting with Phase 1: GameObject Operations.
 
