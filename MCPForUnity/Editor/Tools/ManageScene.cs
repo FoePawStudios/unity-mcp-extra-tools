@@ -67,12 +67,18 @@ namespace MCPForUnity.Editor.Tools
             // Normalize path early if provided (before any processing)
             if (!string.IsNullOrEmpty(path))
             {
-                path = AssetPathUtility.SanitizeAssetPath(path);
-                // Ensure .unity extension for scene files if not already present
-                if (!path.EndsWith(".unity", StringComparison.OrdinalIgnoreCase))
+                string normalizedPath = AssetPathUtility.SanitizeAssetPath(path);
+                // SanitizeAssetPath should return a valid path, but check to be safe
+                if (!string.IsNullOrEmpty(normalizedPath))
                 {
-                    path += ".unity";
+                    path = normalizedPath;
+                    // Ensure .unity extension for scene files if not already present
+                    if (!path.EndsWith(".unity", StringComparison.OrdinalIgnoreCase))
+                    {
+                        path += ".unity";
+                    }
                 }
+                // If normalization failed, path remains as-is (will be validated later)
             }
 
             // Extract directory from path if provided (path might be full path like "Assets/Scenes/TestScene.unity")
@@ -108,13 +114,14 @@ namespace MCPForUnity.Editor.Tools
                 return new ErrorResponse("Action parameter is required.");
             }
 
-            string sceneFileName = string.IsNullOrEmpty(name) ? null : $"{name}.unity";
-            
             // Construct relativePath: prioritize path if provided, otherwise construct from name
+            // IMPORTANT: When path is provided (even if constructed from name in Python), use it directly
+            // and do NOT process the name parameter again to avoid duplication
             string relativePath = null;
             if (!string.IsNullOrEmpty(path))
             {
                 // Path was provided - use normalized path directly
+                // This handles both explicit paths and paths constructed from names in Python
                 relativePath = path.Replace('\\', '/');
                 // Path should already be normalized and start with Assets/ from SanitizeAssetPath
                 // But ensure it does for safety
@@ -123,9 +130,11 @@ namespace MCPForUnity.Editor.Tools
                     relativePath = "Assets/" + relativePath.TrimStart('/');
                 }
             }
-            else if (!string.IsNullOrEmpty(sceneFileName))
+            else if (!string.IsNullOrEmpty(name))
             {
-                // Construct from name + default directory
+                // Only construct from name if path was NOT provided
+                // This ensures we don't duplicate paths when Python sends both path and name
+                string sceneFileName = name.EndsWith(".unity", StringComparison.OrdinalIgnoreCase) ? name : $"{name}.unity";
                 relativePath = Path.Combine("Assets", relativeDir, sceneFileName).Replace('\\', '/');
             }
             
@@ -139,6 +148,9 @@ namespace MCPForUnity.Editor.Tools
                 string relativePathDir = Path.GetDirectoryName(relativePath) ?? string.Empty;
                 if (!string.IsNullOrEmpty(relativePathDir))
                 {
+                    // Normalize path separators (Path.GetDirectoryName may return backslashes on Windows)
+                    relativePathDir = relativePathDir.Replace('\\', '/');
+                    
                     // Remove "Assets/" prefix to get relative directory
                     string dirWithoutAssets = relativePathDir;
                     if (dirWithoutAssets.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase))
@@ -177,7 +189,7 @@ namespace MCPForUnity.Editor.Tools
             }
 
             // Route action
-            try { McpLog.Info($"[ManageScene] Route action='{action}' name='{name}' path='{path}' buildIndex={(buildIndex.HasValue ? buildIndex.Value.ToString() : "null")}", always: false); } catch { }
+            try { McpLog.Info($"[ManageScene] Route action='{action}' name='{name}' path='{path}' relativePath='{relativePath}' buildIndex={(buildIndex.HasValue ? buildIndex.Value.ToString() : "null")}", always: false); } catch { }
             switch (action)
             {
                 case "create":
@@ -188,6 +200,7 @@ namespace MCPForUnity.Editor.Tools
                     return CreateScene(fullPath, relativePath);
                 case "load":
                     // Loading can be done by path/name or build index
+                    // Check relativePath first (it will be set if path or name was provided)
                     if (!string.IsNullOrEmpty(relativePath))
                         return LoadScene(relativePath);
                     else if (buildIndex.HasValue)

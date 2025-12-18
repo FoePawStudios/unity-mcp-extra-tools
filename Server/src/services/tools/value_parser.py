@@ -174,15 +174,17 @@ def parse_color(value: list[float] | str | None, default: list[float] | None = N
                 return default
             
             # Detect if values are in 0-255 range and convert to 0-1
-            # Only convert if ALL RGB components are > 1.0 AND within 0-255 range
+            # Convert if ANY RGB component is > 1.0 AND all are within 0-255 range
+            # This handles colors with zero components like [128, 0, 0, 255]
             # This avoids incorrectly converting edge cases like [1.5, 0, 0, 1] where
             # the user might want HDR colors or values outside normal 0-1 range
             rgb_values = [r, g, b]
-            if all(1.0 < val <= 255.0 for val in rgb_values):
-                # All RGB components are in 0-255 range, convert them
+            # Check if any component is > 1.0 (indicating 0-255 range) and all are within valid 0-255 range
+            if any(val > 1.0 for val in rgb_values) and all(0.0 <= val <= 255.0 for val in rgb_values):
+                # RGB components are in 0-255 range, convert them
                 r, g, b = r / 255.0, g / 255.0, b / 255.0
                 # Convert alpha only if it's also in 0-255 range
-                if 1.0 < a <= 255.0:
+                if 0.0 <= a <= 255.0 and a > 1.0:
                     a = a / 255.0
             
             # Clamp to valid range (0-1 for Unity Color)

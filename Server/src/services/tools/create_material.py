@@ -17,11 +17,11 @@ from .value_parser import parse_color
 
 @mcp_for_unity_tool(
     name="create_material",
-    description="Create a new material asset. Use this to create materials for rendering GameObjects."
+    description="Create a new material asset. Use this to create materials for rendering GameObjects. Note: The parent folder path must exist before creating materials. Use manage_asset with action: create_folder to create folders if needed."
 )
 async def create_material(
     ctx: Context,
-    materialPath: Annotated[str, "Material asset path, e.g., Assets/Materials/RedMaterial.mat (required)"],
+    materialPath: Annotated[str, "Material asset path, e.g., Assets/Materials/RedMaterial.mat (required). The parent folder must exist - create folders first using manage_asset if needed."],
     shader: Annotated[str | None, "Shader name, e.g., Standard, Unlit/Color (optional, default: Standard)"] = None,
     color: Annotated[list[float] | str | None, "Base color [r, g, b, a] (optional)"] = None,
     properties: Annotated[dict[str, Any] | str | None, "Additional shader properties (optional)"] = None,

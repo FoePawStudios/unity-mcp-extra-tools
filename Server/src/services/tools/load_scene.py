@@ -41,14 +41,20 @@ async def load_scene(
             constructed_path = f"Assets/Scenes/{name}.unity"
         else:
             constructed_path = f"Assets/Scenes/{name}"
-        # Validate the constructed path
-        is_valid, error_msg = validate_scene_path(constructed_path)
-        if not is_valid:
-            return {"success": False, "message": error_msg or "Invalid constructed scene path"}
+        # Validate the constructed path (it's a path, so it will have '/')
+        if not constructed_path.startswith("Assets/"):
+            return {"success": False, "message": "Scene path must start with 'Assets/'"}
     elif path:
-        is_valid, error_msg = validate_scene_path(path)
-        if not is_valid:
-            return {"success": False, "message": error_msg or "Invalid scene path"}
+        # Check if it's a path (contains '/') or a name (no '/')
+        if '/' in path:
+            # It's a path - validate as path format only
+            if not path.startswith("Assets/"):
+                return {"success": False, "message": "Scene path must start with 'Assets/'"}
+        else:
+            # It's a name - use existing validator which validates names
+            is_valid, error_msg = validate_scene_path(path)
+            if not is_valid:
+                return {"success": False, "message": error_msg or "Invalid scene name"}
 
     # Parse buildIndex if provided as string
     parsed_build_index = None
