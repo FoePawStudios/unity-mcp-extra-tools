@@ -55,32 +55,38 @@ async def wait_for_compilation(
             {},
         )
 
-        if isinstance(response, dict):
-            data = response.get("data", {})
-            is_compiling = data.get("isCompiling", False)
+        # Handle non-dict responses immediately to avoid infinite loop
+        if not isinstance(response, dict):
+            return {
+                "success": False,
+                "message": f"Failed to get compilation status: {str(response)}"
+            }
 
-            if not is_compiling:
-                # Compilation complete
-                if parsed_check_errors:
-                    # Check for errors
-                    has_errors = False
-                    error_message = ""
-                    if "message" in response and "error" in str(response.get("message", "")).lower():
-                        has_errors = True
-                        error_message = response.get("message", "")
+        data = response.get("data", {})
+        is_compiling = data.get("isCompiling", False)
 
-                    return {
-                        "success": True,
-                        "completed": True,
-                        "has_errors": has_errors,
-                        "message": error_message if has_errors else "Compilation completed successfully",
-                    }
-                else:
-                    return {
-                        "success": True,
-                        "completed": True,
-                        "message": "Compilation completed",
-                    }
+        if not is_compiling:
+            # Compilation complete
+            if parsed_check_errors:
+                # Check for errors
+                has_errors = False
+                error_message = ""
+                if "message" in response and "error" in str(response.get("message", "")).lower():
+                    has_errors = True
+                    error_message = response.get("message", "")
+
+                return {
+                    "success": True,
+                    "completed": True,
+                    "has_errors": has_errors,
+                    "message": error_message if has_errors else "Compilation completed successfully",
+                }
+            else:
+                return {
+                    "success": True,
+                    "completed": True,
+                    "message": "Compilation completed",
+                }
 
         # Wait a bit before polling again
         await asyncio.sleep(0.5)
