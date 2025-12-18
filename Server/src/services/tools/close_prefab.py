@@ -22,8 +22,6 @@ async def close_prefab(
 ) -> dict[str, Any]:
     """Close the prefab isolation mode and return to scene view."""
     unity_instance = get_unity_instance_from_context(ctx)
-    if not unity_instance:
-        return {"success": False, "message": "No active Unity instance"}
 
     # Parse boolean parameter (default True for save_before_close)
     parsed_save_before_close = coerce_bool(save_before_close, default=True)

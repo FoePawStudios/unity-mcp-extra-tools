@@ -20,8 +20,6 @@ async def check_compilation_status(
 ) -> dict[str, Any]:
     """Check if Unity is currently compiling scripts."""
     unity_instance = get_unity_instance_from_context(ctx)
-    if not unity_instance:
-        return {"success": False, "message": "No active Unity instance"}
 
     # Send get_editor_state command to Unity (same as resource uses)
     response = await send_with_unity_instance(

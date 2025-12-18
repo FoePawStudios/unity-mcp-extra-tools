@@ -21,8 +21,6 @@ async def set_play_mode(
 ) -> dict[str, Any]:
     """Control Unity play mode (play, pause, stop)."""
     unity_instance = get_unity_instance_from_context(ctx)
-    if not unity_instance:
-        return {"success": False, "message": "No active Unity instance"}
 
     # Validate inputs
     if not mode:

@@ -23,8 +23,6 @@ async def save_scene(
 ) -> dict[str, Any]:
     """Save the current scene."""
     unity_instance = get_unity_instance_from_context(ctx)
-    if not unity_instance:
-        return {"success": False, "message": "No active Unity instance"}
 
     # Validate scene_path if provided
     if scene_path:

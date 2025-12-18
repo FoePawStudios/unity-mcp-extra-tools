@@ -27,8 +27,6 @@ async def create_scene(
 ) -> dict[str, Any]:
     """Create a new scene."""
     unity_instance = get_unity_instance_from_context(ctx)
-    if not unity_instance:
-        return {"success": False, "message": "No active Unity instance"}
 
     # Validate inputs
     if not scene_name:

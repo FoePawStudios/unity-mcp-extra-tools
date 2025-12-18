@@ -21,8 +21,6 @@ async def add_tag(
 ) -> dict[str, Any]:
     """Add a tag to the project."""
     unity_instance = get_unity_instance_from_context(ctx)
-    if not unity_instance:
-        return {"success": False, "message": "No active Unity instance"}
 
     # Validate inputs
     if not tag_name:

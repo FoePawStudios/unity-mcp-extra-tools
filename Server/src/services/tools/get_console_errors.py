@@ -24,8 +24,6 @@ async def get_console_errors(
 ) -> dict[str, Any]:
     """Get errors and warnings from Unity console."""
     unity_instance = get_unity_instance_from_context(ctx)
-    if not unity_instance:
-        return {"success": False, "message": "No active Unity instance"}
 
     # Parse types parameter (default to ["error", "warning"])
     parsed_types = ["error", "warning"]

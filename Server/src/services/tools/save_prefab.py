@@ -20,8 +20,6 @@ async def save_prefab(
 ) -> dict[str, Any]:
     """Save changes made to the currently open prefab."""
     unity_instance = get_unity_instance_from_context(ctx)
-    if not unity_instance:
-        return {"success": False, "message": "No active Unity instance"}
 
     # Transform simplified parameters to Unity bridge format
     params: dict[str, Any] = {

@@ -20,8 +20,6 @@ async def get_scene_hierarchy(
 ) -> dict[str, Any]:
     """Get the hierarchy of GameObjects in the current scene."""
     unity_instance = get_unity_instance_from_context(ctx)
-    if not unity_instance:
-        return {"success": False, "message": "No active Unity instance"}
 
     # Transform simplified parameters to Unity bridge format
     params: dict[str, Any] = {

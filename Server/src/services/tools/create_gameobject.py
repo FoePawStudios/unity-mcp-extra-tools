@@ -33,8 +33,6 @@ async def create_gameobject(
 ) -> dict[str, Any]:
     """Create a new GameObject in the current scene."""
     unity_instance = get_unity_instance_from_context(ctx)
-    if not unity_instance:
-        return {"success": False, "message": "No active Unity instance"}
 
     # Validate inputs
     is_valid, error_msg = validate_gameobject_name(name)

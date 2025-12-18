@@ -26,8 +26,6 @@ async def add_component(
 ) -> dict[str, Any]:
     """Add a component to a GameObject."""
     unity_instance = get_unity_instance_from_context(ctx)
-    if not unity_instance:
-        return {"success": False, "message": "No active Unity instance"}
 
     # Validate inputs
     is_valid, error_msg = validate_gameobject_name(target)

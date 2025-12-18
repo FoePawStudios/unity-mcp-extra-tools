@@ -26,8 +26,6 @@ async def load_scene(
 ) -> dict[str, Any]:
     """Load a scene."""
     unity_instance = get_unity_instance_from_context(ctx)
-    if not unity_instance:
-        return {"success": False, "message": "No active Unity instance"}
 
     # Validate inputs - at least one identifier must be provided
     if not scene_path and not scene_name and build_index is None:

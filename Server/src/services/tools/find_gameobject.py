@@ -26,8 +26,6 @@ async def find_gameobject(
 ) -> dict[str, Any]:
     """Find GameObject(s) in the current scene."""
     unity_instance = get_unity_instance_from_context(ctx)
-    if not unity_instance:
-        return {"success": False, "message": "No active Unity instance"}
 
     # Validate inputs
     if not search_by:

@@ -25,8 +25,6 @@ async def set_material_color(
 ) -> dict[str, Any]:
     """Set the color of a material."""
     unity_instance = get_unity_instance_from_context(ctx)
-    if not unity_instance:
-        return {"success": False, "message": "No active Unity instance"}
 
     # Validate inputs
     is_valid, error_msg = validate_material_path(material_path)

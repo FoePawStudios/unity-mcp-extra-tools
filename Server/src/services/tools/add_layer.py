@@ -21,8 +21,6 @@ async def add_layer(
 ) -> dict[str, Any]:
     """Add a layer to the project."""
     unity_instance = get_unity_instance_from_context(ctx)
-    if not unity_instance:
-        return {"success": False, "message": "No active Unity instance"}
 
     # Validate inputs
     if not layer_name:

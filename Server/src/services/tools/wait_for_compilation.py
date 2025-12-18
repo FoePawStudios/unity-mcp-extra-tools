@@ -24,8 +24,6 @@ async def wait_for_compilation(
 ) -> dict[str, Any]:
     """Wait for Unity compilation to complete."""
     unity_instance = get_unity_instance_from_context(ctx)
-    if not unity_instance:
-        return {"success": False, "message": "No active Unity instance"}
 
     # Parse timeout
     parsed_timeout = 60
