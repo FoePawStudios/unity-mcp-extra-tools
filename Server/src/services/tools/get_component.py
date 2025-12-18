@@ -21,8 +21,8 @@ from .validators import validate_component_type, validate_gameobject_name
 async def get_component(
     ctx: Context,
     target: Annotated[str, "GameObject name or path (required)"],
-    component_type: Annotated[str, "Component type name (required)"],
-    include_private: Annotated[bool | str | None, "Include private serialized fields (optional, default: false)"] = None,
+    componentName: Annotated[str, "Component type name (required)"],
+    includeNonPublicSerialized: Annotated[bool | str | None, "Include private serialized fields (optional, default: false)"] = None,
 ) -> dict[str, Any]:
     """Get information about a component on a GameObject."""
     unity_instance = get_unity_instance_from_context(ctx)
@@ -32,22 +32,22 @@ async def get_component(
     if not is_valid:
         return {"success": False, "message": error_msg or "Invalid target GameObject name"}
 
-    is_valid, error_msg = validate_component_type(component_type)
+    is_valid, error_msg = validate_component_type(componentName)
     if not is_valid:
         return {"success": False, "message": error_msg or "Invalid component type"}
 
     # Parse boolean parameter
-    parsed_include_private = coerce_bool(include_private, default=False)
+    parsed_include_non_public = coerce_bool(includeNonPublicSerialized, default=False)
 
     # Transform simplified parameters to Unity bridge format
     params: dict[str, Any] = {
         "action": "get_component",
         "target": target,
-        "component_name": component_type,  # Map component_type to component_name
+        "componentName": componentName,
     }
 
-    if parsed_include_private:
-        params["includeNonPublicSerialized"] = parsed_include_private
+    if parsed_include_non_public:
+        params["includeNonPublicSerialized"] = parsed_include_non_public
 
     # Send directly to Unity
     return await send_with_unity_instance(

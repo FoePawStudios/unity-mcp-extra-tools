@@ -17,22 +17,22 @@ from transport.unity_transport import send_with_unity_instance
 )
 async def add_layer(
     ctx: Context,
-    layer_name: Annotated[str, "Layer name to add (required)"],
+    layerName: Annotated[str, "Layer name to add (required)"],
 ) -> dict[str, Any]:
     """Add a layer to the project."""
     unity_instance = get_unity_instance_from_context(ctx)
 
     # Validate inputs
-    if not layer_name:
-        return {"success": False, "message": "layer_name parameter is required"}
+    if not layerName:
+        return {"success": False, "message": "layerName parameter is required"}
 
-    if not isinstance(layer_name, str) or len(layer_name.strip()) == 0:
-        return {"success": False, "message": "layer_name must be a non-empty string"}
+    if not isinstance(layerName, str) or len(layerName.strip()) == 0:
+        return {"success": False, "message": "layerName must be a non-empty string"}
 
-    # Transform simplified parameters to Unity bridge format (camelCase)
+    # Transform simplified parameters to Unity bridge format
     params: dict[str, Any] = {
         "action": "add_layer",
-        "layerName": layer_name,  # Map layer_name to layerName
+        "layerName": layerName,
     }
 
     # Send directly to Unity

@@ -20,7 +20,7 @@ from .validators import validate_component_type, validate_gameobject_name
 async def remove_component(
     ctx: Context,
     target: Annotated[str, "GameObject name or path (required)"],
-    component_type: Annotated[str, "Component type name to remove (required)"],
+    componentName: Annotated[str, "Component type name to remove (required)"],
 ) -> dict[str, Any]:
     """Remove a component from a GameObject."""
     unity_instance = get_unity_instance_from_context(ctx)
@@ -30,7 +30,7 @@ async def remove_component(
     if not is_valid:
         return {"success": False, "message": error_msg or "Invalid target GameObject name"}
 
-    is_valid, error_msg = validate_component_type(component_type)
+    is_valid, error_msg = validate_component_type(componentName)
     if not is_valid:
         return {"success": False, "message": error_msg or "Invalid component type"}
 
@@ -38,7 +38,7 @@ async def remove_component(
     params: dict[str, Any] = {
         "action": "remove_component",
         "target": target,
-        "component_name": component_type,  # Map component_type to component_name
+        "componentName": componentName,
     }
 
     # Send directly to Unity

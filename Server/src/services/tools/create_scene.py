@@ -20,39 +20,39 @@ from .validators import validate_scene_path
 )
 async def create_scene(
     ctx: Context,
-    scene_name: Annotated[str, "Scene name (required)"],
-    scene_path: Annotated[str | None, "Full path, e.g., Assets/Scenes/MainMenu.unity (optional)"] = None,
-    add_camera: Annotated[bool | str | None, "Add main camera (optional, default: true)"] = None,
-    add_light: Annotated[bool | str | None, "Add directional light (optional, default: true for 3D)"] = None,
+    name: Annotated[str, "Scene name (required)"],
+    path: Annotated[str | None, "Full path, e.g., Assets/Scenes/MainMenu.unity (optional)"] = None,
+    addCamera: Annotated[bool | str | None, "Add main camera (optional, default: true)"] = None,
+    addLight: Annotated[bool | str | None, "Add directional light (optional, default: true for 3D)"] = None,
 ) -> dict[str, Any]:
     """Create a new scene."""
     unity_instance = get_unity_instance_from_context(ctx)
 
     # Validate inputs
-    if not scene_name:
-        return {"success": False, "message": "scene_name parameter is required"}
+    if not name:
+        return {"success": False, "message": "name parameter is required"}
 
-    if scene_path:
-        is_valid, error_msg = validate_scene_path(scene_path)
+    if path:
+        is_valid, error_msg = validate_scene_path(path)
         if not is_valid:
             return {"success": False, "message": error_msg or "Invalid scene path"}
 
     # Parse boolean parameters
-    parsed_add_camera = coerce_bool(add_camera, default=True)
-    parsed_add_light = coerce_bool(add_light, default=True)
+    parsed_add_camera = coerce_bool(addCamera, default=True)
+    parsed_add_light = coerce_bool(addLight, default=True)
 
     # Transform simplified parameters to Unity bridge format
     params: dict[str, Any] = {
         "action": "create",
-        "name": scene_name,
+        "name": name,
     }
 
-    if scene_path:
-        params["path"] = scene_path
+    if path:
+        params["path"] = path
     if parsed_add_camera is not None:
-        params["addCamera"] = parsed_add_camera  # Unity bridge may use this, check if needed
+        params["addCamera"] = parsed_add_camera
     if parsed_add_light is not None:
-        params["addLight"] = parsed_add_light  # Unity bridge may use this, check if needed
+        params["addLight"] = parsed_add_light
 
     # Send directly to Unity
     return await send_with_unity_instance(

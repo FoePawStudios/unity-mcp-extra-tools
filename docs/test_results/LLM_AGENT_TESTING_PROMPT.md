@@ -12,6 +12,32 @@ You are tasked with performing comprehensive integration testing of 27 simplifie
 
 **Your goal**: Systematically test each tool, document all results (successes, failures, and workarounds) in a markdown file at `docs/test_results/simplified_tools_test_results.md`.
 
+## Initial Cleanup - IMPORTANT FIRST STEP
+
+**BEFORE STARTING ANY TESTS**, you must clean up any objects, scenes, prefabs, or materials created during previous test runs to avoid creation collisions and name conflicts.
+
+1. **Get current scene hierarchy**: Use `get_scene_hierarchy` to see what GameObjects exist
+2. **Delete test objects**: Use `delete_gameobject` to remove any objects with names matching test patterns (e.g., `TestObject_*`, `CompTest*`, `PrefabTest*`, `TestCube`, `TestMaterial*`, `TestScene*`, `TestTag*`, `TestLayer*`, `Child_*`, `Parent_*`, `RenamedObject*`)
+3. **Check for test scenes**: Use scene management tools to identify and optionally clean up test scenes if needed
+4. **Check for test materials**: If testing materials, check for and remove any test materials in `Assets/Materials/` that match test patterns
+5. **Check for test prefabs**: If testing prefabs, check for and remove any test prefabs in `Assets/Prefabs/` that match test patterns
+
+**Cleanup Pattern**: Look for objects with names that match these patterns:
+- `TestObject_*` (any number)
+- `CompTest*`
+- `PrefabTest*`
+- `TestCube`, `TestSphere`, `TestCapsule`, etc.
+- `TestMaterial_*`
+- `TestScene_*`
+- `TestTag_*`
+- `TestLayer_*`
+- `Child_*`, `Parent_*`
+- `RenamedObject*`
+
+**Note**: Be careful not to delete actual project assets. Only delete objects that clearly match test naming patterns.
+
+Once cleanup is complete, proceed with the testing plan below.
+
 ## Recent Fixes Applied
 
 The following bugs have been fixed and should now work correctly:
@@ -20,7 +46,7 @@ The following bugs have been fixed and should now work correctly:
 2. **`add_component`**: Fixed parameter name conversion (`component_name` to `componentName`) - should now add components successfully
 3. **`create_gameobject`**: 
    - Fixed parameter name conversion (`set_active` to `setActive`, `primitive_type` to `primitiveType`)
-   - Fixed active state handling - now works correctly
+   - **Active parameter limitation**: The `active=false` parameter has limitations and may not work reliably during GameObject creation. **Workaround**: If you need to create an inactive GameObject, use a two-step approach: 1) Create the GameObject using `create_gameobject`, 2) Immediately follow with `modify_gameobject` to set `active=false`. This is the documented expected behavior.
    - Added primitive type validation - invalid types now return clear error messages
    - **Vector format**: Comma-separated strings without brackets (e.g., `"10,2,0"`) are now rejected with clear error - use array format `[10, 2, 0]` or JSON string `"[10, 2, 0]"`
 4. **`modify_gameobject`**: 
@@ -28,7 +54,10 @@ The following bugs have been fixed and should now work correctly:
    - Fixed active state handling - now works correctly
    - **Vector format**: Same as create_gameobject - comma-separated strings without brackets are rejected
    - **Unparenting**: Use empty string `""` for explicit unparenting (moves to scene root)
-5. **`parse_color`**: Fixed heuristic to only convert 0-255 range when ALL RGB components are > 1.0 AND <= 255.0 (preserves edge cases like HDR colors)
+5. **Component property/query tools**: ✅ **FIXED** - Parameter names now use camelCase directly (`componentName`, `includeNonPublicSerialized`) matching Unity's expectations. All component tools (`remove_component`, `set_component_property`, `get_component`, `set_component_properties`) should now work correctly.
+6. **`create_material`**: ✅ **FIXED** - Parameter name now uses camelCase (`materialPath`) matching Unity's expectations. Folder creation logic exists in Unity C# backend.
+7. **`load_scene`**: ✅ **FIXED** - Parameter names now use camelCase (`path`, `name`, `buildIndex`) matching Unity's expectations. Should now work correctly.
+8. **`parse_color`**: Fixed heuristic to only convert 0-255 range when ALL RGB components are > 1.0 AND <= 255.0 (preserves edge cases like HDR colors)
 
 ## Testing Guidelines
 
@@ -38,8 +67,9 @@ The following bugs have been fixed and should now work correctly:
    - Test parameter variations (arrays vs strings, optional params)
    - Test error scenarios (invalid inputs, missing prerequisites)
 3. **Document Everything**: Create/update `docs/test_results/simplified_tools_test_results.md` with all results
-4. **Clean Up**: After each test category, clean up created objects to avoid conflicts
-5. **Workarounds**: If a simplified tool fails, try the equivalent legacy tool (e.g., `mcp_unityMCP_manage_gameobject`) and document if it succeeds
+4. **Initial Cleanup**: **BEFORE starting tests**, clean up any objects from previous test runs (see "Initial Cleanup" section above)
+5. **Clean Up**: After each test category, clean up created objects to avoid conflicts
+6. **Workarounds**: If a simplified tool fails, try the equivalent legacy tool (e.g., `mcp_unityMCP_manage_gameobject`) and document if it succeeds
 
 ## Test Result Documentation Format
 
@@ -87,12 +117,12 @@ Test cases to perform:
 7. ✅ Creation with parent: Create parent first, then child with `{"name": "Child", "parent": "Parent"}`
 8. ✅ Creation with tag: `{"name": "TestObject_006", "tag": "Untagged"}` (use existing tag)
 9. ✅ Creation with layer: `{"name": "TestObject_007", "layer": "Default"}` (use existing layer)
-10. ✅ Creation with primitive: `{"name": "TestCube", "primitive_type": "Cube"}`
-11. ✅ Creation with active=false: `{"name": "TestObject_008", "active": false}` - Should now work correctly (was broken before)
+10. ✅ Creation with primitive: `{"name": "TestCube", "primitiveType": "Cube"}`
+11. ⚠️ Creation with setActive=false: `{"name": "TestObject_008", "setActive": false}` - **LIMITATION**: This may not work reliably. Use workaround: create GameObject, then immediately use `modify_gameobject` with `setActive=false` to set the active state.
 12. ✅ All parameters combined
 13. ❌ Invalid name (empty string): `{"name": ""}`
 14. ❌ Invalid parent (non-existent): `{"name": "TestObject_009", "parent": "NonExistent"}`
-15. ❌ Invalid primitive type: `{"name": "TestObject_010", "primitive_type": "InvalidType"}` - Should now return clear error message (was silently failing before)
+15. ❌ Invalid primitive type: `{"name": "TestObject_010", "primitiveType": "InvalidType"}` - Should now return clear error message (was silently failing before)
 
 After testing, clean up all test objects.
 
@@ -108,7 +138,7 @@ Test cases:
 3. ✅ Find by tag: `{"search_by": "tag", "value": "Untagged"}` - Should now work
 4. ✅ Find by layer: `{"search_by": "layer", "value": "Default"}` - Should now work
 5. ✅ Find by component: `{"search_by": "component", "value": "Transform"}` - Should now work
-6. ✅ Include inactive: `{"search_by": "name", "value": "TestObject_008", "include_inactive": true}` - Should now work
+6. ✅ Include inactive: `{"search_by": "name", "value": "TestObject_008", "searchInactive": true}` - Should now work
 7. ✅ Search in children: Create parent with children, then search
 8. ✅ Combination of options
 9. ❌ Find non-existent: `{"search_by": "name", "value": "NonExistentObject"}` - Should return empty results (not error)
@@ -130,7 +160,7 @@ Test cases:
 8. ✅ Unparent: `{"target": "TestObject_001", "parent": ""}` - Use empty string for explicit unparenting (moves to scene root). Note: `null` may not work due to Python/JSON serialization - use `""` instead.
 9. ✅ Change tag: `{"target": "TestObject_001", "tag": "Untagged"}`
 10. ✅ Change layer: `{"target": "TestObject_001", "layer": "Default"}`
-11. ✅ Set active: `{"target": "TestObject_001", "active": false}` - Should now work correctly (was broken before)
+11. ✅ Set active: `{"target": "TestObject_001", "setActive": false}` - Should now work correctly (was broken before)
 12. ✅ Multiple properties: Combine position, rotation, and scale
 13. ❌ Modify non-existent: `{"target": "NonExistent", "position": [0, 0, 0]}`
 14. ❌ Invalid parent: `{"target": "TestObject_001", "parent": "NonExistent"}`
@@ -156,66 +186,74 @@ Test cases:
 Prerequisites: Create test GameObject first.
 
 Test cases:
-1. ✅ Add Rigidbody2D: `{"target": "TestObject", "component_type": "Rigidbody2D"}` - Should now work (was failing before)
-2. ✅ Add Rigidbody: `{"target": "TestObject", "component_type": "Rigidbody"}` - Should now work
-3. ✅ Add SpriteRenderer: `{"target": "TestObject", "component_type": "SpriteRenderer"}` - Should now work
-4. ✅ Add MeshRenderer: `{"target": "TestObject", "component_type": "MeshRenderer"}` - Should now work
-5. ✅ Add BoxCollider2D: `{"target": "TestObject", "component_type": "BoxCollider2D"}` - Should now work
-6. ✅ Add BoxCollider: `{"target": "TestObject", "component_type": "BoxCollider"}` - Should now work
-7. ✅ Add with properties: `{"target": "TestObject", "component_type": "Rigidbody2D", "properties": {"mass": 2.5}}`
+1. ✅ Add Rigidbody2D: `{"target": "TestObject", "componentName": "Rigidbody2D"}` - Should now work (was failing before)
+2. ✅ Add Rigidbody: `{"target": "TestObject", "componentName": "Rigidbody"}` - Should now work
+3. ✅ Add SpriteRenderer: `{"target": "TestObject", "componentName": "SpriteRenderer"}` - Should now work
+4. ✅ Add MeshRenderer: `{"target": "TestObject", "componentName": "MeshRenderer"}` - Should now work
+5. ✅ Add BoxCollider2D: `{"target": "TestObject", "componentName": "BoxCollider2D"}` - Should now work
+6. ✅ Add BoxCollider: `{"target": "TestObject", "componentName": "BoxCollider"}` - Should now work
+7. ✅ Add with properties: `{"target": "TestObject", "componentName": "Rigidbody2D", "properties": {"mass": 2.5}}`
 8. ✅ Add multiple components sequentially
-9. ❌ Add to non-existent: `{"target": "NonExistent", "component_type": "Rigidbody2D"}`
-10. ❌ Invalid component: `{"target": "TestObject", "component_type": "InvalidComponent"}`
+9. ❌ Add to non-existent: `{"target": "NonExistent", "componentName": "Rigidbody2D"}`
+10. ❌ Invalid component: `{"target": "TestObject", "componentName": "InvalidComponent"}`
 
 ### Tool 6: `remove_component`
+
+**Note**: This tool has been updated to use camelCase parameter names directly (`componentName`). It should now work correctly.
 
 Prerequisites: Create GameObject with components first.
 
 Test cases:
-1. ✅ Remove component: `{"target": "TestObject", "component_type": "Rigidbody2D"}`
-2. ✅ Remove Transform (should fail - required): `{"target": "TestObject", "component_type": "Transform"}`
+1. ✅ Remove component: `{"target": "TestObject", "componentName": "Rigidbody2D"}` - Should now work with camelCase parameter
+2. ✅ Remove Transform (should fail - required): `{"target": "TestObject", "componentName": "Transform"}`
 3. ✅ Remove multiple components sequentially
-4. ❌ Remove non-existent: `{"target": "TestObject", "component_type": "NonExistentComponent"}`
-5. ❌ Remove from non-existent: `{"target": "NonExistent", "component_type": "Rigidbody2D"}`
+4. ❌ Remove non-existent: `{"target": "TestObject", "componentName": "NonExistentComponent"}`
+5. ❌ Remove from non-existent: `{"target": "NonExistent", "componentName": "Rigidbody2D"}`
 
 ### Tool 7: `set_component_property`
 
+**Note**: This tool has been updated to use camelCase parameter names directly (`componentName`). It should now work correctly.
+
 Prerequisites: Create GameObject with Rigidbody2D component.
 
 Test cases:
-1. ✅ Set Rigidbody2D.mass: `{"target": "TestObject", "component_type": "Rigidbody2D", "property": "mass", "value": 2.5}`
-2. ✅ Set Rigidbody2D.gravityScale: `{"target": "TestObject", "component_type": "Rigidbody2D", "property": "gravityScale", "value": 0.5}`
-3. ✅ Set SpriteRenderer.color: `{"target": "TestObject", "component_type": "SpriteRenderer", "property": "color", "value": [1, 0, 0, 1]}`
-4. ✅ Set Transform.position: `{"target": "TestObject", "component_type": "Transform", "property": "position", "value": [5, 0, 0]}`
-5. ✅ Set nested property: `{"target": "TestObject", "component_type": "MeshRenderer", "property": "sharedMaterial.color", "value": [0, 1, 0, 1]}`
-6. ✅ Set boolean: `{"target": "TestObject", "component_type": "BoxCollider2D", "property": "isTrigger", "value": true}`
+1. ✅ Set Rigidbody2D.mass: `{"target": "TestObject", "componentName": "Rigidbody2D", "property": "mass", "value": 2.5}` - Should now work with camelCase parameter
+2. ✅ Set Rigidbody2D.gravityScale: `{"target": "TestObject", "componentName": "Rigidbody2D", "property": "gravityScale", "value": 0.5}`
+3. ✅ Set SpriteRenderer.color: `{"target": "TestObject", "componentName": "SpriteRenderer", "property": "color", "value": [1, 0, 0, 1]}`
+4. ✅ Set Transform.position: `{"target": "TestObject", "componentName": "Transform", "property": "position", "value": [5, 0, 0]}`
+5. ✅ Set nested property: `{"target": "TestObject", "componentName": "MeshRenderer", "property": "sharedMaterial.color", "value": [0, 1, 0, 1]}`
+6. ✅ Set boolean: `{"target": "TestObject", "componentName": "BoxCollider2D", "property": "isTrigger", "value": true}`
 7. ✅ Set string: Test with string property if available
-8. ❌ Set on non-existent component: `{"target": "TestObject", "component_type": "NonExistent", "property": "mass", "value": 1}`
-9. ❌ Invalid property: `{"target": "TestObject", "component_type": "Rigidbody2D", "property": "invalidProperty", "value": 1}`
+8. ❌ Set on non-existent component: `{"target": "TestObject", "componentName": "NonExistent", "property": "mass", "value": 1}`
+9. ❌ Invalid property: `{"target": "TestObject", "componentName": "Rigidbody2D", "property": "invalidProperty", "value": 1}`
 
 ### Tool 8: `set_component_properties`
 
+**Note**: This tool has been updated to use camelCase parameter names directly (`componentName`). It should now work correctly.
+
 Prerequisites: Create GameObject with Rigidbody2D component.
 
 Test cases:
-1. ✅ Set multiple Rigidbody2D properties: `{"target": "TestObject", "component_type": "Rigidbody2D", "properties": {"mass": 2.5, "gravityScale": 0.5, "drag": 0.1}}`
-2. ✅ Set multiple SpriteRenderer properties: `{"target": "TestObject", "component_type": "SpriteRenderer", "properties": {"color": [1, 0, 0, 1], "sortingOrder": 5}}`
+1. ✅ Set multiple Rigidbody2D properties: `{"target": "TestObject", "componentName": "Rigidbody2D", "properties": {"mass": 2.5, "gravityScale": 0.5, "drag": 0.1}}` - Should now work with camelCase parameter
+2. ✅ Set multiple SpriteRenderer properties: `{"target": "TestObject", "componentName": "SpriteRenderer", "properties": {"color": [1, 0, 0, 1], "sortingOrder": 5}}`
 3. ✅ Set mixed property types
-4. ❌ Set on non-existent component: `{"target": "TestObject", "component_type": "NonExistent", "properties": {"mass": 1}}`
-5. ❌ Invalid property names: `{"target": "TestObject", "component_type": "Rigidbody2D", "properties": {"invalidProp": 1}}`
+4. ❌ Set on non-existent component: `{"target": "TestObject", "componentName": "NonExistent", "properties": {"mass": 1}}`
+5. ❌ Invalid property names: `{"target": "TestObject", "componentName": "Rigidbody2D", "properties": {"invalidProp": 1}}`
 
 ### Tool 9: `get_component`
+
+**Note**: This tool has been updated to use camelCase parameter names directly (`componentName`, `includeNonPublicSerialized`). It should now work correctly.
 
 Prerequisites: Create GameObject with components.
 
 Test cases:
-1. ✅ Get Transform: `{"target": "TestObject", "component_type": "Transform"}`
-2. ✅ Get Rigidbody2D: `{"target": "TestObject", "component_type": "Rigidbody2D"}`
-3. ✅ Get with include_private=false: `{"target": "TestObject", "component_type": "Rigidbody2D", "include_private": false}`
-4. ✅ Get with include_private=true: `{"target": "TestObject", "component_type": "Rigidbody2D", "include_private": true}`
+1. ✅ Get Transform: `{"target": "TestObject", "componentName": "Transform"}` - Should now work with camelCase parameter
+2. ✅ Get Rigidbody2D: `{"target": "TestObject", "componentName": "Rigidbody2D"}` - Should now work with camelCase parameter
+3. ✅ Get with includeNonPublicSerialized=false: `{"target": "TestObject", "componentName": "Rigidbody2D", "includeNonPublicSerialized": false}`
+4. ✅ Get with includeNonPublicSerialized=true: `{"target": "TestObject", "componentName": "Rigidbody2D", "includeNonPublicSerialized": true}`
 5. ✅ Verify returned properties match set values (set mass to 2.5, then get and verify)
-6. ❌ Get non-existent component: `{"target": "TestObject", "component_type": "NonExistent"}`
-7. ❌ Get from non-existent GameObject: `{"target": "NonExistent", "component_type": "Transform"}`
+6. ❌ Get non-existent component: `{"target": "TestObject", "componentName": "NonExistent"}`
+7. ❌ Get from non-existent GameObject: `{"target": "NonExistent", "componentName": "Transform"}`
 
 ---
 
@@ -226,23 +264,23 @@ Test cases:
 Prerequisites: Create test GameObject with components.
 
 Test cases:
-1. ✅ Create prefab from simple GameObject: `{"source_gameobject": "TestObject", "prefab_path": "Assets/Prefabs/TestPrefab.prefab"}`
+1. ✅ Create prefab from simple GameObject: `{"source_gameobject": "TestObject", "prefabPath": "Assets/Prefabs/TestPrefab.prefab"}`
 2. ✅ Create prefab from GameObject with components
 3. ✅ Create prefab from GameObject with children
-4. ✅ Create with allow_overwrite=false (new prefab)
-5. ✅ Create with allow_overwrite=true (overwrite existing)
-6. ❌ Create from non-existent: `{"source_gameobject": "NonExistent", "prefab_path": "Assets/Prefabs/Test.prefab"}`
-7. ❌ Invalid path: `{"source_gameobject": "TestObject", "prefab_path": "Invalid/Path.prefab"}`
+4. ✅ Create with allowOverwrite=false (new prefab)
+5. ✅ Create with allowOverwrite=true (overwrite existing)
+6. ❌ Create from non-existent: `{"source_gameobject": "NonExistent", "prefabPath": "Assets/Prefabs/Test.prefab"}`
+7. ❌ Invalid path: `{"source_gameobject": "TestObject", "prefabPath": "Invalid/Path.prefab"}`
 
 ### Tool 11: `open_prefab`
 
 Prerequisites: Create a prefab first.
 
 Test cases:
-1. ✅ Open existing prefab: `{"prefab_path": "Assets/Prefabs/TestPrefab.prefab"}`
+1. ✅ Open existing prefab: `{"prefabPath": "Assets/Prefabs/TestPrefab.prefab"}`
 2. ✅ Verify prefab opens in isolation mode
-3. ❌ Open non-existent: `{"prefab_path": "Assets/Prefabs/NonExistent.prefab"}`
-4. ❌ Invalid path: `{"prefab_path": "Invalid/Path.prefab"}`
+3. ❌ Open non-existent: `{"prefabPath": "Assets/Prefabs/NonExistent.prefab"}`
+4. ❌ Invalid path: `{"prefabPath": "Invalid/Path.prefab"}`
 
 ### Tool 12: `save_prefab`
 
@@ -259,8 +297,8 @@ Test cases:
 Prerequisites: Open a prefab first.
 
 Test cases:
-1. ✅ Close with save_before_close=true: `{"save_before_close": true}`
-2. ✅ Close with save_before_close=false: `{"save_before_close": false}`
+1. ✅ Close with saveBeforeClose=true: `{"saveBeforeClose": true}`
+2. ✅ Close with saveBeforeClose=false: `{"saveBeforeClose": false}`
 3. ✅ Close after save_prefab: Save first, then close
 4. ❌ Close when no prefab open: Call `close_prefab` without opening prefab first
 
@@ -271,35 +309,37 @@ Test cases:
 ### Tool 14: `create_scene`
 
 Test cases:
-1. ✅ Create scene with name only: `{"scene_name": "TestScene_001"}`
-2. ✅ Create scene with path: `{"scene_name": "TestScene_002", "scene_path": "Assets/Scenes/TestScene_002.unity"}`
-3. ✅ Create with add_camera=true: `{"scene_name": "TestScene_003", "add_camera": true}`
-4. ✅ Create with add_camera=false: `{"scene_name": "TestScene_004", "add_camera": false}`
-5. ✅ Create with add_light=true: `{"scene_name": "TestScene_005", "add_light": true}`
-6. ✅ Create with add_light=false: `{"scene_name": "TestScene_006", "add_light": false}`
+1. ✅ Create scene with name only: `{"name": "TestScene_001"}`
+2. ✅ Create scene with path: `{"name": "TestScene_002", "path": "Assets/Scenes/TestScene_002.unity"}`
+3. ✅ Create with addCamera=true: `{"name": "TestScene_003", "addCamera": true}`
+4. ✅ Create with addCamera=false: `{"name": "TestScene_004", "addCamera": false}`
+5. ✅ Create with addLight=true: `{"name": "TestScene_005", "addLight": true}`
+6. ✅ Create with addLight=false: `{"name": "TestScene_006", "addLight": false}`
 7. ✅ Create with all options
-8. ❌ Invalid path: `{"scene_name": "TestScene", "scene_path": "Invalid/Path.unity"}`
+8. ❌ Invalid path: `{"name": "TestScene", "path": "Invalid/Path.unity"}`
 9. ❌ Duplicate name: Try creating scene with same name twice
 
 ### Tool 15: `load_scene`
 
+**Note**: This tool has been updated to use camelCase parameter names directly (`path`, `name`, `buildIndex`). It should now work correctly.
+
 Prerequisites: Create test scenes first.
 
 Test cases:
-1. ✅ Load by path: `{"scene_path": "Assets/Scenes/TestScene_001.unity"}`
-2. ✅ Load by name: `{"scene_name": "TestScene_001"}`
-3. ✅ Load by build_index: `{"build_index": 0}` (if scene is in build settings)
-4. ✅ Load non-existent (should fail gracefully): `{"scene_name": "NonExistentScene"}`
-5. ❌ Invalid path: `{"scene_path": "Invalid/Path.unity"}`
-6. ❌ Invalid build_index: `{"build_index": 999}`
+1. ✅ Load by path: `{"path": "Assets/Scenes/TestScene_001.unity"}` - Should now work with camelCase parameter
+2. ✅ Load by name: `{"name": "TestScene_001"}` - Should now work with camelCase parameter
+3. ✅ Load by buildIndex: `{"buildIndex": 0}` (if scene is in build settings)
+4. ✅ Load non-existent (should fail gracefully): `{"name": "NonExistentScene"}`
+5. ❌ Invalid path: `{"path": "Invalid/Path.unity"}`
+6. ❌ Invalid buildIndex: `{"buildIndex": 999}`
 
 ### Tool 16: `save_scene`
 
 Test cases:
 1. ✅ Save current scene: Call `save_scene` with no parameters
-2. ✅ Save with new path: `{"scene_path": "Assets/Scenes/NewSceneName.unity"}`
+2. ✅ Save with new path: `{"path": "Assets/Scenes/NewSceneName.unity"}`
 3. ✅ Save after modifications: Make changes, then save
-4. ❌ Invalid path: `{"scene_path": "Invalid/Path.unity"}`
+4. ❌ Invalid path: `{"path": "Invalid/Path.unity"}`
 
 ### Tool 17: `get_scene_hierarchy`
 
@@ -315,15 +355,17 @@ Test cases:
 
 ### Tool 18: `create_material`
 
+**Note**: This tool has been updated to use camelCase parameter names directly (`materialPath`). Folder creation code exists in Unity C# backend. It should now work correctly.
+
 Test cases:
-1. ✅ Create with path only: `{"material_path": "Assets/Materials/TestMaterial_001.mat"}`
-2. ✅ Create with shader: `{"material_path": "Assets/Materials/TestMaterial_002.mat", "shader": "Standard"}`
-3. ✅ Create with color (array): `{"material_path": "Assets/Materials/TestMaterial_003.mat", "color": [1, 0, 0, 1]}`
-4. ✅ Create with color (string): `{"material_path": "Assets/Materials/TestMaterial_004.mat", "color": "1,0,0,1"}`
-5. ✅ Create with properties: `{"material_path": "Assets/Materials/TestMaterial_005.mat", "properties": {"_Metallic": 0.5}}`
+1. ✅ Create with path only: `{"materialPath": "Assets/Materials/TestMaterial_001.mat"}` - Should now work with camelCase parameter
+2. ✅ Create with shader: `{"materialPath": "Assets/Materials/TestMaterial_002.mat", "shader": "Standard"}`
+3. ✅ Create with color (array): `{"materialPath": "Assets/Materials/TestMaterial_003.mat", "color": [1, 0, 0, 1]}`
+4. ✅ Create with color (string): `{"materialPath": "Assets/Materials/TestMaterial_004.mat", "color": "1,0,0,1"}`
+5. ✅ Create with properties: `{"materialPath": "Assets/Materials/TestMaterial_005.mat", "properties": {"_Metallic": 0.5}}`
 6. ✅ Create with all options
-7. ❌ Invalid path: `{"material_path": "Invalid/Path.mat"}`
-8. ❌ Invalid shader: `{"material_path": "Assets/Materials/Test.mat", "shader": "NonExistentShader"}`
+7. ❌ Invalid path: `{"materialPath": "Invalid/Path.mat"}`
+8. ❌ Invalid shader: `{"materialPath": "Assets/Materials/Test.mat", "shader": "NonExistentShader"}`
 
 ### Tool 19: `set_material_color`
 
@@ -332,28 +374,28 @@ Test cases:
 Prerequisites: Create a material first.
 
 Test cases:
-1. ✅ Set color (array 0-1): `{"material_path": "Assets/Materials/TestMaterial_001.mat", "color": [0, 1, 0, 1]}`
-2. ✅ Set color (array 0-255): `{"material_path": "Assets/Materials/TestMaterial_001.mat", "color": [0, 255, 0, 255]}` - Should convert to [0, 1, 0, 1]
-3. ✅ Set color (JSON string): `{"material_path": "Assets/Materials/TestMaterial_001.mat", "color": "[0,1,0,1]"}`
-4. ✅ Set color with alpha: `{"material_path": "Assets/Materials/TestMaterial_001.mat", "color": [1, 1, 0, 0.5]}`
-5. ✅ Set HDR color (edge case): `{"material_path": "Assets/Materials/TestMaterial_001.mat", "color": [1.5, 0, 0, 1]}` - Should preserve 1.5 (not convert to 0-255 range)
-6. ✅ Set mixed range (edge case): `{"material_path": "Assets/Materials/TestMaterial_001.mat", "color": [1.5, 0, 0, 1]}` - Should preserve values (not convert)
+1. ✅ Set color (array 0-1): `{"materialPath": "Assets/Materials/TestMaterial_001.mat", "color": [0, 1, 0, 1]}`
+2. ✅ Set color (array 0-255): `{"materialPath": "Assets/Materials/TestMaterial_001.mat", "color": [0, 255, 0, 255]}` - Should convert to [0, 1, 0, 1]
+3. ✅ Set color (JSON string): `{"materialPath": "Assets/Materials/TestMaterial_001.mat", "color": "[0,1,0,1]"}`
+4. ✅ Set color with alpha: `{"materialPath": "Assets/Materials/TestMaterial_001.mat", "color": [1, 1, 0, 0.5]}`
+5. ✅ Set HDR color (edge case): `{"materialPath": "Assets/Materials/TestMaterial_001.mat", "color": [1.5, 0, 0, 1]}` - Should preserve 1.5 (not convert to 0-255 range)
+6. ✅ Set mixed range (edge case): `{"materialPath": "Assets/Materials/TestMaterial_001.mat", "color": [1.5, 0, 0, 1]}` - Should preserve values (not convert)
 7. ✅ Set color multiple times
-8. ❌ Non-existent material: `{"material_path": "Assets/Materials/NonExistent.mat", "color": [1, 0, 0, 1]}`
-9. ❌ Invalid format: `{"material_path": "Assets/Materials/TestMaterial_001.mat", "color": "invalid"}`
+8. ❌ Non-existent material: `{"materialPath": "Assets/Materials/NonExistent.mat", "color": [1, 0, 0, 1]}`
+9. ❌ Invalid format: `{"materialPath": "Assets/Materials/TestMaterial_001.mat", "color": "invalid"}`
 
 ### Tool 20: `assign_material`
 
 Prerequisites: Create material and GameObject with MeshRenderer.
 
 Test cases:
-1. ✅ Assign to MeshRenderer: `{"target": "TestObject", "material_path": "Assets/Materials/TestMaterial_001.mat"}`
+1. ✅ Assign to MeshRenderer: `{"target": "TestObject", "materialPath": "Assets/Materials/TestMaterial_001.mat"}`
 2. ✅ Assign to SpriteRenderer: Create object with SpriteRenderer, then assign
-3. ✅ Assign to specific slot: `{"target": "TestObject", "material_path": "Assets/Materials/TestMaterial_001.mat", "slot": 0}`
+3. ✅ Assign to specific slot: `{"target": "TestObject", "materialPath": "Assets/Materials/TestMaterial_001.mat", "slot": 0}`
 4. ✅ Assign to multiple renderers
-5. ❌ Non-existent GameObject: `{"target": "NonExistent", "material_path": "Assets/Materials/TestMaterial_001.mat"}`
-6. ❌ GameObject without renderer: `{"target": "TestObject", "material_path": "Assets/Materials/TestMaterial_001.mat"}` (if object has no renderer)
-7. ❌ Non-existent material: `{"target": "TestObject", "material_path": "Assets/Materials/NonExistent.mat"}`
+5. ❌ Non-existent GameObject: `{"target": "NonExistent", "materialPath": "Assets/Materials/TestMaterial_001.mat"}`
+6. ❌ GameObject without renderer: `{"target": "TestObject", "materialPath": "Assets/Materials/TestMaterial_001.mat"}` (if object has no renderer)
+7. ❌ Non-existent material: `{"target": "TestObject", "materialPath": "Assets/Materials/NonExistent.mat"}`
 
 ---
 
@@ -409,18 +451,18 @@ Test cases:
 ### Tool 26: `add_tag`
 
 Test cases:
-1. ✅ Add new tag: `{"tag_name": "TestTag_001"}`
+1. ✅ Add new tag: `{"tagName": "TestTag_001"}`
 2. ✅ Add tag that already exists: Try adding same tag twice (should handle gracefully)
 3. ✅ Verify tag appears: Check if tag is available in Unity
-4. ❌ Invalid name: `{"tag_name": ""}` (empty string)
+4. ❌ Invalid name: `{"tagName": ""}` (empty string)
 
 ### Tool 27: `add_layer`
 
 Test cases:
-1. ✅ Add new layer: `{"layer_name": "TestLayer_001"}`
+1. ✅ Add new layer: `{"layerName": "TestLayer_001"}`
 2. ✅ Add layer that already exists: Try adding same layer twice (should handle gracefully)
 3. ✅ Verify layer appears: Check if layer is available in Unity
-4. ❌ Invalid name: `{"layer_name": ""}` (empty string)
+4. ❌ Invalid name: `{"layerName": ""}` (empty string)
 
 ---
 
@@ -489,6 +531,7 @@ After testing all individual tools, test these multi-tool workflows:
 
 ## Important Notes
 
+- **Parameter Naming**: All simplified tools now use camelCase parameter names directly matching Unity's expectations. Use `componentName` (not `component_type`), `materialPath` (not `material_path`), `prefabPath` (not `prefab_path`), etc. This ensures Unity error messages reference parameter names that match what you see in the tool signatures.
 - **Vector Format Requirements**: Position, rotation, and scale parameters must be:
   - Arrays: `[x, y, z]` (Python list)
   - JSON array strings: `"[x, y, z]"` or `'[x, y, z]'` (must include brackets)
@@ -499,7 +542,14 @@ After testing all individual tools, test these multi-tool workflows:
 - **Use unique names** for all test objects to avoid conflicts
 - **Clean up after each phase** to maintain test isolation
 - **Be thorough** - test both success and failure scenarios
-- **Fixed Tools**: `find_gameobject` and `add_component` were previously broken but should now work correctly
 
-Begin testing now, starting with Phase 1: GameObject Operations.
+- **All Tools Updated**: All simplified tools have been updated to use camelCase parameter names:
+  - Component tools: `componentName`, `includeNonPublicSerialized` ✅
+  - Scene tools: `name`, `path`, `buildIndex`, `addCamera`, `addLight` ✅
+  - Prefab tools: `prefabPath`, `saveBeforeClose`, `allowOverwrite` ✅
+  - Material tools: `materialPath` ✅
+  - GameObject tools: `primitiveType`, `setActive`, `searchInactive` ✅
+  - Editor tools: `tagName`, `layerName` ✅
+
+**START HERE**: First perform the Initial Cleanup steps described above, then begin testing with Phase 1: GameObject Operations.
 

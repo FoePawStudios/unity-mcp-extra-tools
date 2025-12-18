@@ -17,22 +17,22 @@ from transport.unity_transport import send_with_unity_instance
 )
 async def add_tag(
     ctx: Context,
-    tag_name: Annotated[str, "Tag name to add (required)"],
+    tagName: Annotated[str, "Tag name to add (required)"],
 ) -> dict[str, Any]:
     """Add a tag to the project."""
     unity_instance = get_unity_instance_from_context(ctx)
 
     # Validate inputs
-    if not tag_name:
-        return {"success": False, "message": "tag_name parameter is required"}
+    if not tagName:
+        return {"success": False, "message": "tagName parameter is required"}
 
-    if not isinstance(tag_name, str) or len(tag_name.strip()) == 0:
-        return {"success": False, "message": "tag_name must be a non-empty string"}
+    if not isinstance(tagName, str) or len(tagName.strip()) == 0:
+        return {"success": False, "message": "tagName must be a non-empty string"}
 
-    # Transform simplified parameters to Unity bridge format (camelCase)
+    # Transform simplified parameters to Unity bridge format
     params: dict[str, Any] = {
         "action": "add_tag",
-        "tagName": tag_name,  # Map tag_name to tagName
+        "tagName": tagName,
     }
 
     # Send directly to Unity

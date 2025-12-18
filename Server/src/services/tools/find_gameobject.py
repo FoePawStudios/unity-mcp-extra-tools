@@ -7,7 +7,7 @@ from typing import Annotated, Any, Literal
 from fastmcp import Context
 from services.registry import mcp_for_unity_tool
 from services.tools import get_unity_instance_from_context
-from services.tools.utils import coerce_bool, convert_params_to_camel_case
+from services.tools.utils import coerce_bool
 from transport.legacy.unity_connection import async_send_command_with_retry
 from transport.unity_transport import send_with_unity_instance
 
@@ -21,7 +21,7 @@ async def find_gameobject(
     search_by: Annotated[Literal["name", "tag", "layer", "component"], "How to search (required)"],
     value: Annotated[str, "What to search for (required)"],
     find_all: Annotated[bool | str | None, "Return all matches (optional, default: false)"] = None,
-    include_inactive: Annotated[bool | str | None, "Include inactive GameObjects (optional, default: false)"] = None,
+    searchInactive: Annotated[bool | str | None, "Include inactive GameObjects (optional, default: false)"] = None,
     search_children: Annotated[bool | str | None, "Search in child objects (optional, default: false)"] = None,
 ) -> dict[str, Any]:
     """Find GameObject(s) in the current scene."""
@@ -33,7 +33,7 @@ async def find_gameobject(
     if not value:
         return {"success": False, "message": "value parameter is required"}
 
-    # Map simplified search_by to Unity bridge search_method
+    # Map simplified search_by to Unity bridge searchMethod
     search_method_map = {
         "name": "by_name",
         "tag": "by_tag",
@@ -47,25 +47,22 @@ async def find_gameobject(
 
     # Parse boolean parameters
     parsed_find_all = coerce_bool(find_all, default=False)
-    parsed_include_inactive = coerce_bool(include_inactive, default=False)
+    parsed_search_inactive = coerce_bool(searchInactive, default=False)
     parsed_search_children = coerce_bool(search_children, default=False)
 
     # Transform simplified parameters to Unity bridge format
     params: dict[str, Any] = {
         "action": "find",
-        "search_method": search_method,
-        "search_term": value,
+        "searchMethod": search_method,
+        "searchTerm": value,
     }
 
     if parsed_find_all:
-        params["find_all"] = parsed_find_all
-    if parsed_include_inactive:
-        params["search_inactive"] = parsed_include_inactive
+        params["findAll"] = parsed_find_all
+    if parsed_search_inactive:
+        params["searchInactive"] = parsed_search_inactive
     if parsed_search_children:
-        params["search_in_children"] = parsed_search_children
-
-    # Convert snake_case keys to camelCase for Unity bridge
-    params = convert_params_to_camel_case(params)
+        params["searchInChildren"] = parsed_search_children
 
     # Send directly to Unity
     return await send_with_unity_instance(

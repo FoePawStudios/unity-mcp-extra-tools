@@ -19,20 +19,20 @@ from .validators import validate_prefab_path
 )
 async def open_prefab(
     ctx: Context,
-    prefab_path: Annotated[str, "Prefab asset path, e.g., Assets/Prefabs/Enemy.prefab (required)"],
+    prefabPath: Annotated[str, "Prefab asset path, e.g., Assets/Prefabs/Enemy.prefab (required)"],
 ) -> dict[str, Any]:
     """Open a prefab in isolation mode for editing."""
     unity_instance = get_unity_instance_from_context(ctx)
 
     # Validate inputs
-    is_valid, error_msg = validate_prefab_path(prefab_path)
+    is_valid, error_msg = validate_prefab_path(prefabPath)
     if not is_valid:
         return {"success": False, "message": error_msg or "Invalid prefab path"}
 
-    # Transform simplified parameters to Unity bridge format (camelCase)
+    # Transform simplified parameters to Unity bridge format
     params: dict[str, Any] = {
         "action": "open_stage",
-        "prefabPath": prefab_path,
+        "prefabPath": prefabPath,
         "mode": "InIsolation",  # Default mode
     }
 

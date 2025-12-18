@@ -18,15 +18,15 @@ from transport.unity_transport import send_with_unity_instance
 )
 async def close_prefab(
     ctx: Context,
-    save_before_close: Annotated[bool | str | None, "Save prefab before closing (optional, default: true)"] = None,
+    saveBeforeClose: Annotated[bool | str | None, "Save prefab before closing (optional, default: true)"] = None,
 ) -> dict[str, Any]:
     """Close the prefab isolation mode and return to scene view."""
     unity_instance = get_unity_instance_from_context(ctx)
 
-    # Parse boolean parameter (default True for save_before_close)
-    parsed_save_before_close = coerce_bool(save_before_close, default=True)
+    # Parse boolean parameter (default True for saveBeforeClose)
+    parsed_save_before_close = coerce_bool(saveBeforeClose, default=True)
 
-    # Transform simplified parameters to Unity bridge format (camelCase)
+    # Transform simplified parameters to Unity bridge format
     params: dict[str, Any] = {
         "action": "close_stage",
     }

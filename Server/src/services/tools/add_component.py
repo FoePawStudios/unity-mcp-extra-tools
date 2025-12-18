@@ -7,7 +7,7 @@ from typing import Annotated, Any
 from fastmcp import Context
 from services.registry import mcp_for_unity_tool
 from services.tools import get_unity_instance_from_context
-from services.tools.utils import parse_json_payload, convert_params_to_camel_case
+from services.tools.utils import parse_json_payload
 from transport.legacy.unity_connection import async_send_command_with_retry
 from transport.unity_transport import send_with_unity_instance
 
@@ -21,7 +21,7 @@ from .validators import validate_component_type, validate_gameobject_name
 async def add_component(
     ctx: Context,
     target: Annotated[str, "GameObject name or path (required)"],
-    component_type: Annotated[str, "Component type name, e.g., Rigidbody2D, SpriteRenderer (required)"],
+    componentName: Annotated[str, "Component type name, e.g., Rigidbody2D, SpriteRenderer (required)"],
     properties: Annotated[dict[str, Any] | str | None, "Initial component properties (optional)"] = None,
 ) -> dict[str, Any]:
     """Add a component to a GameObject."""
@@ -32,7 +32,7 @@ async def add_component(
     if not is_valid:
         return {"success": False, "message": error_msg or "Invalid target GameObject name"}
 
-    is_valid, error_msg = validate_component_type(component_type)
+    is_valid, error_msg = validate_component_type(componentName)
     if not is_valid:
         return {"success": False, "message": error_msg or "Invalid component type"}
 
@@ -47,17 +47,14 @@ async def add_component(
     params: dict[str, Any] = {
         "action": "add_component",
         "target": target,
-        "component_name": component_type,  # Map component_type to component_name
+        "componentName": componentName,
     }
 
-    # If properties provided, use component_properties format expected by Unity bridge
+    # If properties provided, use componentProperties format expected by Unity bridge
     if parsed_properties:
-        # Unity bridge expects component_properties in format:
+        # Unity bridge expects componentProperties in format:
         # {"ComponentTypeName": {"property1": value1, "property2": value2}}
-        params["component_properties"] = {component_type: parsed_properties}
-
-    # Convert snake_case keys to camelCase for Unity bridge
-    params = convert_params_to_camel_case(params)
+        params["componentProperties"] = {componentName: parsed_properties}
 
     # Send directly to Unity
     return await send_with_unity_instance(

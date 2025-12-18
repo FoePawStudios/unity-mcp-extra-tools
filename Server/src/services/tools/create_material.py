@@ -21,7 +21,7 @@ from .value_parser import parse_color
 )
 async def create_material(
     ctx: Context,
-    material_path: Annotated[str, "Material asset path, e.g., Assets/Materials/RedMaterial.mat (required)"],
+    materialPath: Annotated[str, "Material asset path, e.g., Assets/Materials/RedMaterial.mat (required)"],
     shader: Annotated[str | None, "Shader name, e.g., Standard, Unlit/Color (optional, default: Standard)"] = None,
     color: Annotated[list[float] | str | None, "Base color [r, g, b, a] (optional)"] = None,
     properties: Annotated[dict[str, Any] | str | None, "Additional shader properties (optional)"] = None,
@@ -30,7 +30,7 @@ async def create_material(
     unity_instance = get_unity_instance_from_context(ctx)
 
     # Validate inputs
-    is_valid, error_msg = validate_material_path(material_path)
+    is_valid, error_msg = validate_material_path(materialPath)
     if not is_valid:
         return {"success": False, "message": error_msg or "Invalid material path"}
 
@@ -44,10 +44,10 @@ async def create_material(
         if parsed_properties is not None and not isinstance(parsed_properties, dict):
             return {"success": False, "message": "properties must be a JSON object (dict)"}
 
-    # Transform simplified parameters to Unity bridge format (camelCase)
+    # Transform simplified parameters to Unity bridge format
     params: dict[str, Any] = {
         "action": "create",
-        "materialPath": material_path,
+        "materialPath": materialPath,
     }
 
     if shader:

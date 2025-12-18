@@ -485,6 +485,13 @@ namespace MCPForUnity.Editor.Tools
                 }
             }
 
+            // Set Active State (after all other properties)
+            bool? setActive = @params["setActive"]?.ToObject<bool?>();
+            if (setActive.HasValue)
+            {
+                newGo.SetActive(setActive.Value);
+            }
+
             // Add Components
             if (@params["componentsToAdd"] is JArray componentsToAddArray)
             {

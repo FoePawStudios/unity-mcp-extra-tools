@@ -7,7 +7,7 @@ from typing import Annotated, Any
 from fastmcp import Context
 from services.registry import mcp_for_unity_tool
 from services.tools import get_unity_instance_from_context
-from services.tools.utils import coerce_bool, convert_params_to_camel_case
+from services.tools.utils import coerce_bool
 from transport.legacy.unity_connection import async_send_command_with_retry
 from transport.unity_transport import send_with_unity_instance
 
@@ -29,7 +29,7 @@ async def modify_gameobject(
     parent: Annotated[str | None, "New parent name/path, or null/empty string to unparent (moves to scene root) (optional)"] = None,
     tag: Annotated[str | None, "New tag (optional)"] = None,
     layer: Annotated[str | None, "New layer (optional)"] = None,
-    active: Annotated[bool | str | None, "New active state (optional)"] = None,
+    setActive: Annotated[bool | str | None, "New active state (optional)"] = None,
 ) -> dict[str, Any]:
     """Modify GameObject properties."""
     unity_instance = get_unity_instance_from_context(ctx)
@@ -57,7 +57,7 @@ async def modify_gameobject(
     if scale is not None and parsed_scale is None:
         return {"success": False, "message": "Scale must be an array [x, y, z] or JSON array string '[x, y, z]', not a comma-separated string"}
     
-    parsed_active = coerce_bool(active) if active is not None else None
+    parsed_active = coerce_bool(setActive) if setActive is not None else None
 
     # Transform simplified parameters to Unity bridge format
     params: dict[str, Any] = {
@@ -92,10 +92,7 @@ async def modify_gameobject(
     if layer:
         params["layer"] = layer
     if parsed_active is not None:
-        params["set_active"] = parsed_active
-
-    # Convert snake_case keys to camelCase for Unity bridge
-    params = convert_params_to_camel_case(params)
+        params["setActive"] = parsed_active
 
     # Send directly to Unity
     return await send_with_unity_instance(

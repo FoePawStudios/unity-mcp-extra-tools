@@ -64,19 +64,24 @@ namespace MCPForUnity.Editor.Tools
             int? buildIndex = cmd.buildIndex;
             // bool loadAdditive = @params["loadAdditive"]?.ToObject<bool>() ?? false; // Example for future extension
 
-            // Ensure path is relative to Assets/, removing any leading "Assets/"
-            string relativeDir = path ?? string.Empty;
-            if (!string.IsNullOrEmpty(relativeDir))
+            // Extract directory from path if provided (path might be full path like "Assets/Scenes/TestScene.unity")
+            string relativeDir = string.Empty;
+            if (!string.IsNullOrEmpty(path))
             {
-                relativeDir = relativeDir.Replace('\\', '/').Trim('/');
-                if (relativeDir.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase))
+                // Get directory part from path (handles both directory paths and full file paths)
+                string pathDir = Path.GetDirectoryName(path) ?? string.Empty;
+                if (!string.IsNullOrEmpty(pathDir))
                 {
-                    relativeDir = relativeDir.Substring("Assets/".Length).TrimStart('/');
+                    relativeDir = pathDir.Replace('\\', '/').Trim('/');
+                    if (relativeDir.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase))
+                    {
+                        relativeDir = relativeDir.Substring("Assets/".Length).TrimStart('/');
+                    }
                 }
             }
 
             // Apply default *after* sanitizing, using the original path variable for the check
-            if (string.IsNullOrEmpty(path) && action == "create") // Check original path for emptiness
+            if (string.IsNullOrEmpty(path) && (action == "create" || action == "load")) // Check original path for emptiness
             {
                 relativeDir = "Scenes"; // Default relative directory
             }
@@ -87,15 +92,29 @@ namespace MCPForUnity.Editor.Tools
             }
 
             string sceneFileName = string.IsNullOrEmpty(name) ? null : $"{name}.unity";
+            
+            // Construct relativePath: prioritize path if provided, otherwise construct from name
+            string relativePath = null;
+            if (!string.IsNullOrEmpty(path))
+            {
+                // Path was provided - use it directly (already sanitized above)
+                relativePath = path.Replace('\\', '/');
+                if (!relativePath.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase))
+                {
+                    relativePath = "Assets/" + relativePath.TrimStart('/');
+                }
+            }
+            else if (!string.IsNullOrEmpty(sceneFileName))
+            {
+                // Construct from name + default directory
+                relativePath = Path.Combine("Assets", relativeDir, sceneFileName).Replace('\\', '/');
+            }
+            
             // Construct full system path correctly: ProjectRoot/Assets/relativeDir/sceneFileName
             string fullPathDir = Path.Combine(Application.dataPath, relativeDir); // Combine with Assets path (Application.dataPath ends in Assets)
             string fullPath = string.IsNullOrEmpty(sceneFileName)
                 ? null
                 : Path.Combine(fullPathDir, sceneFileName);
-            // Ensure relativePath always starts with "Assets/" and uses forward slashes
-            string relativePath = string.IsNullOrEmpty(sceneFileName)
-                ? null
-                : Path.Combine("Assets", relativeDir, sceneFileName).Replace('\\', '/');
 
             // Ensure directory exists for 'create'
             if (action == "create" && !string.IsNullOrEmpty(fullPathDir))

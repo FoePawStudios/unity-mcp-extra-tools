@@ -19,14 +19,14 @@ from .validators import validate_scene_path
 )
 async def save_scene(
     ctx: Context,
-    scene_path: Annotated[str | None, "Optional: save with new path/name"] = None,
+    path: Annotated[str | None, "Optional: save with new path/name"] = None,
 ) -> dict[str, Any]:
     """Save the current scene."""
     unity_instance = get_unity_instance_from_context(ctx)
 
-    # Validate scene_path if provided
-    if scene_path:
-        is_valid, error_msg = validate_scene_path(scene_path)
+    # Validate path if provided
+    if path:
+        is_valid, error_msg = validate_scene_path(path)
         if not is_valid:
             return {"success": False, "message": error_msg or "Invalid scene path"}
 
@@ -35,8 +35,8 @@ async def save_scene(
         "action": "save",
     }
 
-    if scene_path:
-        params["path"] = scene_path
+    if path:
+        params["path"] = path
 
     # Send directly to Unity
     return await send_with_unity_instance(

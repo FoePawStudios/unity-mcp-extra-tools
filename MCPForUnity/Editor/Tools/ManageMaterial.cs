@@ -502,6 +502,29 @@ namespace MCPForUnity.Editor.Tools
                 return new { status = "error", message = $"Material already exists at {materialPath}" };
             }
             
+            // Ensure directory exists
+            string directory = System.IO.Path.GetDirectoryName(materialPath);
+            if (!string.IsNullOrEmpty(directory))
+            {
+                // Normalize path separators (Path.GetDirectoryName may return backslashes on Windows)
+                directory = directory.Replace('\\', '/');
+                
+                // Convert Assets/ path to file system path
+                // Remove "Assets/" prefix if present and combine with Application.dataPath (which points to Assets folder)
+                string relativeDir = directory;
+                if (relativeDir.StartsWith("Assets/", System.StringComparison.OrdinalIgnoreCase))
+                {
+                    relativeDir = relativeDir.Substring("Assets/".Length);
+                }
+                string fullDirectoryPath = System.IO.Path.Combine(UnityEngine.Application.dataPath, relativeDir);
+                
+                if (!System.IO.Directory.Exists(fullDirectoryPath))
+                {
+                    System.IO.Directory.CreateDirectory(fullDirectoryPath);
+                    AssetDatabase.Refresh(); // Make sure Unity knows about the new folder
+                }
+            }
+            
             AssetDatabase.CreateAsset(material, materialPath);
             
             if (properties != null)

@@ -21,7 +21,7 @@ from .validators import validate_gameobject_name, validate_material_path
 async def assign_material(
     ctx: Context,
     target: Annotated[str, "GameObject name or path (required)"],
-    material_path: Annotated[str, "Material asset path (required)"],
+    materialPath: Annotated[str, "Material asset path (required)"],
     slot: Annotated[int | str | None, "Material slot index (optional, default: 0)"] = None,
 ) -> dict[str, Any]:
     """Assign a material to a renderer component on a GameObject."""
@@ -32,7 +32,7 @@ async def assign_material(
     if not is_valid:
         return {"success": False, "message": error_msg or "Invalid target GameObject name"}
 
-    is_valid, error_msg = validate_material_path(material_path)
+    is_valid, error_msg = validate_material_path(materialPath)
     if not is_valid:
         return {"success": False, "message": error_msg or "Invalid material path"}
 
@@ -45,11 +45,11 @@ async def assign_material(
         except (ValueError, TypeError):
             return {"success": False, "message": "slot must be an integer"}
 
-    # Transform simplified parameters to Unity bridge format (camelCase)
+    # Transform simplified parameters to Unity bridge format
     params: dict[str, Any] = {
         "action": "assign_material_to_renderer",
         "target": target,
-        "materialPath": material_path,
+        "materialPath": materialPath,
         "slot": parsed_slot,
     }
 

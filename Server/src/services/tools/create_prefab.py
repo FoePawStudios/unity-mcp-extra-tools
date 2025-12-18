@@ -21,8 +21,8 @@ from .validators import validate_gameobject_name, validate_prefab_path
 async def create_prefab(
     ctx: Context,
     source_gameobject: Annotated[str, "Scene GameObject name or path (required)"],
-    prefab_path: Annotated[str, "Prefab asset path, e.g., Assets/Prefabs/Enemy.prefab (required)"],
-    allow_overwrite: Annotated[bool | str | None, "Allow replacing existing prefab (optional, default: false)"] = None,
+    prefabPath: Annotated[str, "Prefab asset path, e.g., Assets/Prefabs/Enemy.prefab (required)"],
+    allowOverwrite: Annotated[bool | str | None, "Allow replacing existing prefab (optional, default: false)"] = None,
 ) -> dict[str, Any]:
     """Create a prefab from a scene GameObject."""
     unity_instance = get_unity_instance_from_context(ctx)
@@ -32,18 +32,18 @@ async def create_prefab(
     if not is_valid:
         return {"success": False, "message": error_msg or "Invalid source GameObject name"}
 
-    is_valid, error_msg = validate_prefab_path(prefab_path)
+    is_valid, error_msg = validate_prefab_path(prefabPath)
     if not is_valid:
         return {"success": False, "message": error_msg or "Invalid prefab path"}
 
     # Parse boolean parameter
-    parsed_allow_overwrite = coerce_bool(allow_overwrite, default=False)
+    parsed_allow_overwrite = coerce_bool(allowOverwrite, default=False)
 
-    # Transform simplified parameters to Unity bridge format (camelCase)
+    # Transform simplified parameters to Unity bridge format
     params: dict[str, Any] = {
         "action": "create_from_gameobject",
         "target": source_gameobject,  # Map source_gameobject to target
-        "prefabPath": prefab_path,
+        "prefabPath": prefabPath,
     }
 
     if parsed_allow_overwrite:

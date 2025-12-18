@@ -21,7 +21,7 @@ from .validators import validate_component_type, validate_gameobject_name
 async def set_component_properties(
     ctx: Context,
     target: Annotated[str, "GameObject name or path (required)"],
-    component_type: Annotated[str, "Component type name (required)"],
+    componentName: Annotated[str, "Component type name (required)"],
     properties: Annotated[dict[str, Any] | str, "Dictionary of property names to values (required)"],
 ) -> dict[str, Any]:
     """Set multiple properties on a component at once."""
@@ -32,7 +32,7 @@ async def set_component_properties(
     if not is_valid:
         return {"success": False, "message": error_msg or "Invalid target GameObject name"}
 
-    is_valid, error_msg = validate_component_type(component_type)
+    is_valid, error_msg = validate_component_type(componentName)
     if not is_valid:
         return {"success": False, "message": error_msg or "Invalid component type"}
 
@@ -45,13 +45,13 @@ async def set_component_properties(
         return {"success": False, "message": "properties dictionary cannot be empty"}
 
     # Transform simplified parameters to Unity bridge format
-    # Unity bridge expects component_properties in format:
+    # Unity bridge expects componentProperties in format:
     # {"ComponentTypeName": {"property1": value1, "property2": value2}}
     params: dict[str, Any] = {
         "action": "set_component_property",
         "target": target,
-        "component_name": component_type,  # Map component_type to component_name
-        "component_properties": {component_type: parsed_properties},
+        "componentName": componentName,
+        "componentProperties": {componentName: parsed_properties},
     }
 
     # Send directly to Unity
