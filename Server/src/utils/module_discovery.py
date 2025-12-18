@@ -32,7 +32,7 @@ def discover_modules(base_dir: Path, package_name: str) -> Generator[str, None, 
             importlib.import_module(full_module_name, package_name)
             yield full_module_name
         except Exception as e:
-            logger.warning(f"Failed to import module {module_name}: {e}")
+            logger.error(f"Failed to import module {module_name}: {e}", exc_info=True)
 
     # Discover modules in subdirectories (one level deep)
     for subdir in base_dir.iterdir():
@@ -51,5 +51,5 @@ def discover_modules(base_dir: Path, package_name: str) -> Generator[str, None, 
                 importlib.import_module(full_module_name, package_name)
                 yield full_module_name
             except Exception as e:
-                logger.warning(
-                    f"Failed to import module {subdir.name}.{module_name}: {e}")
+                logger.error(
+                    f"Failed to import module {subdir.name}.{module_name}: {e}", exc_info=True)
