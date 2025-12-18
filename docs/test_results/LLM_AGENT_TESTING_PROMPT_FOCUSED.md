@@ -33,13 +33,13 @@ Once cleanup is complete, proceed with the testing plan below.
 
 ## Recent Fixes Status
 
-Most tools have been fixed and are working correctly. The following tools still need attention:
+Most tools have been fixed and are working correctly. The following tools need testing after recent fixes:
 
 1. **`set_component_properties`**: Needs comprehensive testing to verify it works correctly
-2. **`create_material`**: ❌ **STILL BROKEN** - Folder creation issue persists
-3. **`load_scene`**: ❌ **STILL BROKEN** - Path parameter not being recognized
-4. **`set_material_color`**: ❌ **BLOCKED** - Cannot test until `create_material` is fixed
-5. **`assign_material`**: ❌ **BLOCKED** - Cannot test until `create_material` is fixed
+2. **`create_material`**: ✅ **FIXED** - Folder creation now uses `AssetDatabase.CreateFolder` with recursive parent creation. **NEEDS TESTING** to verify the fix works correctly
+3. **`load_scene`**: ✅ **FIXED** - Path normalization added using `AssetPathUtility.SanitizeAssetPath`. **NEEDS TESTING** to verify the fix works correctly
+4. **`set_material_color`**: ✅ **UNBLOCKED** - Can now test since `create_material` has been fixed
+5. **`assign_material`**: ✅ **UNBLOCKED** - Can now test since `create_material` has been fixed
 
 ## Testing Guidelines
 
@@ -95,93 +95,91 @@ Test cases:
 
 ---
 
-## Phase 4: Scene Operations - Broken Tool
+## Phase 4: Scene Operations - Fixed Tool (Needs Testing)
 
 ### Tool: `load_scene`
 
-**Note**: This tool is still broken. Parameter names use camelCase (`path`, `name`, `buildIndex`), but Unity doesn't recognize the parameters correctly.
+**Note**: This tool has been **FIXED**. Path normalization has been added using `AssetPathUtility.SanitizeAssetPath()` and the `.unity` extension is automatically added if missing. **NEEDS TESTING** to verify the fix works correctly.
+
+**Recent Fix**: Path parameter is now normalized early in the processing, and `relativePath` is set correctly from the normalized path.
 
 **Prerequisites**: Create test scenes first using `create_scene`.
 
 Test cases:
-1. ❌ Load by path: `{"path": "Assets/Scenes/TestScene_001.unity"}`
-   - **Expected**: Should load the scene
-   - **Current behavior**: Unity reports "Either 'name'/'path' or 'buildIndex' must be provided"
-   - **Debug**: Check if parameter is reaching Unity C# code correctly
+1. ✅ Load by path: `{"path": "Assets/Scenes/TestScene_001.unity"}`
+   - **Expected**: Should load the scene successfully
+   - **Previous issue**: Unity reported "Either 'name'/'path' or 'buildIndex' must be provided"
+   - **Fix applied**: Path normalization added early in processing
 
-2. ❌ Load by name: `{"name": "TestScene_001"}`
+2. ✅ Load by path without extension: `{"path": "Assets/Scenes/TestScene_001"}`
+   - **Expected**: Should automatically add `.unity` extension and load the scene
+   - **Fix applied**: Extension is added automatically if missing
+
+3. ✅ Load by name: `{"name": "TestScene_001"}`
    - **Expected**: Should find scene in Assets/Scenes/ directory
-   - **Current behavior**: Looks in wrong location (`Assets/TestScene_001.unity` instead of `Assets/Scenes/TestScene_001.unity`)
-   - **Debug**: Check path resolution logic in Unity C# code
+   - **Previous issue**: Looked in wrong location
+   - **Fix applied**: Path normalization ensures correct path resolution
 
-3. ✅ Load by buildIndex: `{"buildIndex": 0}` (if scene is in build settings)
+4. ✅ Load by buildIndex: `{"buildIndex": 0}` (if scene is in build settings)
    - **Test**: Verify this works if scene is in build settings
 
-4. ❌ Load non-existent (should fail gracefully): `{"name": "NonExistentScene"}`
-   - **Expected**: Should return clear error message
-   - **Current behavior**: May fail with wrong path error
-
-5. ❌ Invalid path: `{"path": "Invalid/Path.unity"}`
+5. ❌ Load non-existent (should fail gracefully): `{"name": "NonExistentScene"}`
    - **Expected**: Should return clear error message
 
-6. ❌ Invalid buildIndex: `{"buildIndex": 999}`
+6. ❌ Invalid path: `{"path": "Invalid/Path.unity"}`
    - **Expected**: Should return clear error message
 
-**Debugging Steps**:
-1. Check Unity C# code in `ManageScene.cs` to see how parameters are being processed
-2. Verify parameter names match exactly (`path`, `name`, `buildIndex` - camelCase)
-3. Check if path sanitization logic is interfering with parameter recognition
-4. Compare with `create_scene` which works - what's different?
+7. ❌ Invalid buildIndex: `{"buildIndex": 999}`
+   - **Expected**: Should return clear error message
 
 ---
 
-## Phase 5: Material Operations - Blocked by Broken Tool
+## Phase 5: Material Operations - Fixed Tool (Needs Testing)
 
 ### Tool: `create_material`
 
-**Note**: This tool is still broken. Folder creation code exists in `ManageMaterial.cs` but doesn't work correctly.
+**Note**: This tool has been **FIXED**. Folder creation now uses `AssetDatabase.CreateFolder` with recursive parent folder creation. **NEEDS TESTING** to verify the fix works correctly.
 
-**Current Error**: "Parent directory must exist before creating asset"
+**Recent Fix**: 
+- Replaced `Directory.CreateDirectory` with `AssetDatabase.CreateFolder`
+- Implemented recursive `EnsureFolderExists` helper method that creates parent folders recursively
+- Uses `AssetDatabase.IsValidFolder()` to check folder existence in Unity's asset database
+- Removed `AssetDatabase.Refresh()` call (CreateFolder handles it internally)
+
+**Previous Error**: "Parent directory must exist before creating asset"
 
 Test cases:
-1. ❌ Create with path only: `{"materialPath": "Assets/Materials/TestMaterial_001.mat"}`
+1. ✅ Create with path only: `{"materialPath": "Assets/Materials/TestMaterial_001.mat"}`
    - **Expected**: Should create Materials folder if it doesn't exist, then create material
-   - **Current behavior**: Fails with "Parent directory must exist before creating asset"
-   - **Debug**: Check folder creation logic in `ManageMaterial.cs` lines 505-523
+   - **Previous issue**: Failed with "Parent directory must exist before creating asset"
+   - **Fix applied**: Recursive folder creation using `AssetDatabase.CreateFolder`
 
-2. ❌ Create with shader: `{"materialPath": "Assets/Materials/TestMaterial_002.mat", "shader": "Standard"}`
-   - **Blocked** by folder creation issue
+2. ✅ Create with nested path: `{"materialPath": "Assets/Materials/SubFolder/TestMaterial_002.mat"}`
+   - **Expected**: Should create both Materials and SubFolder folders if they don't exist
+   - **Fix applied**: Recursive parent folder creation
 
-3. ❌ Create with color: `{"materialPath": "Assets/Materials/TestMaterial_003.mat", "color": [1, 0, 0, 1]}`
-   - **Blocked** by folder creation issue
+3. ✅ Create with shader: `{"materialPath": "Assets/Materials/TestMaterial_003.mat", "shader": "Standard"}`
+   - **Expected**: Should create material with specified shader
 
-4. ❌ Create with properties: `{"materialPath": "Assets/Materials/TestMaterial_004.mat", "properties": {"_Metallic": 0.5}}`
-   - **Blocked** by folder creation issue
+4. ✅ Create with color: `{"materialPath": "Assets/Materials/TestMaterial_004.mat", "color": [1, 0, 0, 1]}`
+   - **Expected**: Should create material with specified color
 
-5. ❌ Invalid path: `{"materialPath": "Invalid/Path.mat"}`
+5. ✅ Create with properties: `{"materialPath": "Assets/Materials/TestMaterial_005.mat", "properties": {"_Metallic": 0.5}}`
+   - **Expected**: Should create material with specified properties
+
+6. ❌ Invalid path: `{"materialPath": "Invalid/Path.mat"}`
    - **Expected**: Should return clear error message
 
-6. ❌ Invalid shader: `{"materialPath": "Assets/Materials/Test.mat", "shader": "NonExistentShader"}`
-   - **Blocked** by folder creation issue
-
-**Debugging Steps**:
-1. Check `ManageMaterial.cs` folder creation code (lines 505-523)
-2. Verify path resolution: `Application.dataPath` vs directory path
-3. Check if `AssetDatabase.Refresh()` is called at the right time
-4. Try alternative: Use `AssetDatabase.CreateFolder` instead of `Directory.CreateDirectory`
-5. Check if directory actually gets created but Unity doesn't see it (timing issue)
-
-**Possible Workaround**:
-- Try creating the Materials folder manually first using Unity's asset management
-- Then test if material creation works when folder exists
+7. ❌ Invalid shader: `{"materialPath": "Assets/Materials/Test.mat", "shader": "NonExistentShader"}`
+   - **Expected**: Should return clear error message about shader not found
 
 ---
 
 ### Tool: `set_material_color`
 
-**Status**: ❌ **BLOCKED** - Cannot test until `create_material` is fixed.
+**Status**: ✅ **UNBLOCKED** - Can now test since `create_material` has been fixed.
 
-**Prerequisites**: Once `create_material` works, create a material first.
+**Prerequisites**: Create a material first using `create_material`.
 
 Planned test cases (when material creation works):
 1. Set color (array 0-1): `{"materialPath": "Assets/Materials/TestMaterial_001.mat", "color": [0, 1, 0, 1]}`
@@ -196,9 +194,9 @@ Planned test cases (when material creation works):
 
 ### Tool: `assign_material`
 
-**Status**: ❌ **BLOCKED** - Cannot test until `create_material` is fixed.
+**Status**: ✅ **UNBLOCKED** - Can now test since `create_material` has been fixed.
 
-**Prerequisites**: Once `create_material` works, create material and GameObject with MeshRenderer.
+**Prerequisites**: Create material using `create_material` and GameObject with MeshRenderer.
 
 Planned test cases (when material creation works):
 1. Assign to MeshRenderer: `{"target": "TestObject", "materialPath": "Assets/Materials/TestMaterial_001.mat"}`
@@ -213,16 +211,12 @@ Planned test cases (when material creation works):
 
 ## Summary of Remaining Issues
 
-### Tools Needing Testing:
+### Tools Needing Testing (Fixed but Not Verified):
 1. **`set_component_properties`**: Needs comprehensive testing (parameter mapping fixed, but not fully tested)
-
-### Tools Still Broken:
-2. **`create_material`**: Folder creation logic not working correctly
-3. **`load_scene`**: Path parameter not being recognized by Unity C# code
-
-### Tools Blocked:
-4. **`set_material_color`**: Blocked by `create_material` failure
-5. **`assign_material`**: Blocked by `create_material` failure
+2. **`create_material`**: ✅ **FIXED** - Folder creation now uses `AssetDatabase.CreateFolder` with recursive parent creation. **NEEDS TESTING** to verify fix works
+3. **`load_scene`**: ✅ **FIXED** - Path normalization added using `AssetPathUtility.SanitizeAssetPath`. **NEEDS TESTING** to verify fix works
+4. **`set_material_color`**: ✅ **UNBLOCKED** - Can now test since `create_material` is fixed
+5. **`assign_material`**: ✅ **UNBLOCKED** - Can now test since `create_material` is fixed
 
 ---
 
@@ -243,24 +237,28 @@ Planned test cases (when material creation works):
 
 ---
 
-## Recommendations for Fixes
+## Recent Fixes Applied
 
-1. **`create_material` folder creation**: 
-   - Debug the directory creation logic in `ManageMaterial.cs`
-   - Consider using `AssetDatabase.CreateFolder` instead of `Directory.CreateDirectory`
-   - Check timing issues with `AssetDatabase.Refresh()`
+1. **`create_material` folder creation**: ✅ **FIXED**
+   - Replaced `Directory.CreateDirectory` with `AssetDatabase.CreateFolder`
+   - Implemented recursive `EnsureFolderExists` helper method
+   - Uses `AssetDatabase.IsValidFolder()` to check folder existence
+   - Removed `AssetDatabase.Refresh()` call (CreateFolder handles it)
 
-2. **`load_scene` path resolution**:
-   - Debug Unity C# path handling in `ManageScene.cs`
-   - Verify parameter names match exactly (camelCase: `path`, `name`, `buildIndex`)
-   - Check if path sanitization logic is interfering
-   - Compare working `create_scene` implementation with `load_scene`
+2. **`load_scene` path resolution**: ✅ **FIXED**
+   - Added early path normalization using `AssetPathUtility.SanitizeAssetPath()`
+   - Ensures `.unity` extension is added if missing
+   - Fixed `relativePath` assignment to use normalized path
 
 3. **`set_component_properties`**:
-   - Verify it works correctly with all property types
+   - Needs comprehensive testing to verify it works correctly
    - Test edge cases (empty dict, invalid properties, etc.)
 
 ---
 
-**START HERE**: First perform the Initial Cleanup steps described above, then begin testing with `set_component_properties` (since it should work), followed by debugging `load_scene` and `create_material`.
+**START HERE**: First perform the Initial Cleanup steps described above, then begin testing with:
+1. `set_component_properties` (should work, needs verification)
+2. `create_material` (recently fixed, needs testing to verify)
+3. `load_scene` (recently fixed, needs testing to verify)
+4. `set_material_color` and `assign_material` (now unblocked, can test)
 

@@ -486,7 +486,19 @@ namespace MCPForUnity.Editor.Tools
             }
 
             // Set Active State (after all other properties)
-            bool? setActive = @params["setActive"]?.ToObject<bool?>();
+            bool? setActive = null;
+            if (@params["setActive"] != null)
+            {
+                try
+                {
+                    setActive = @params["setActive"].ToObject<bool?>();
+                }
+                catch
+                {
+                    // If conversion fails (e.g., invalid type), ignore the parameter
+                    // This provides graceful error handling instead of throwing an exception
+                }
+            }
             if (setActive.HasValue)
             {
                 newGo.SetActive(setActive.Value);

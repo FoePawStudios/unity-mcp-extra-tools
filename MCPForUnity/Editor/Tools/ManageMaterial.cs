@@ -70,6 +70,55 @@ namespace MCPForUnity.Editor.Tools
             return path;
         }
 
+        /// <summary>
+        /// Recursively creates folders in Unity's asset database using AssetDatabase.CreateFolder.
+        /// This ensures folders exist in Unity's asset database (not just on the file system).
+        /// </summary>
+        /// <param name="folderPath">The folder path to create (e.g., "Assets/Materials/SubFolder")</param>
+        /// <returns>True if the folder exists or was created successfully, false otherwise</returns>
+        private static bool EnsureFolderExists(string folderPath)
+        {
+            if (string.IsNullOrEmpty(folderPath))
+                return false;
+
+            // Normalize path separators
+            folderPath = folderPath.Replace('\\', '/').Trim('/');
+            
+            // Ensure it starts with Assets/
+            if (!folderPath.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase))
+            {
+                folderPath = "Assets/" + folderPath.TrimStart('/');
+            }
+
+            // Check if folder already exists in Unity's asset database
+            if (AssetDatabase.IsValidFolder(folderPath))
+            {
+                return true;
+            }
+
+            // Get parent directory and folder name
+            string parentDir = System.IO.Path.GetDirectoryName(folderPath)?.Replace('\\', '/');
+            string folderName = System.IO.Path.GetFileName(folderPath);
+
+            // If parent is null or empty, we're at the root (shouldn't happen for Assets/)
+            if (string.IsNullOrEmpty(parentDir) || parentDir == "Assets")
+            {
+                // Try to create directly under Assets
+                string guid = AssetDatabase.CreateFolder("Assets", folderName);
+                return !string.IsNullOrEmpty(guid);
+            }
+
+            // Recursively ensure parent exists first
+            if (!EnsureFolderExists(parentDir))
+            {
+                return false;
+            }
+
+            // Now create this folder level
+            string createdGuid = AssetDatabase.CreateFolder(parentDir, folderName);
+            return !string.IsNullOrEmpty(createdGuid);
+        }
+
         private static object SetMaterialShaderProperty(JObject @params)
         {
             string materialPath = NormalizePath(@params["materialPath"]?.ToString());
@@ -502,26 +551,17 @@ namespace MCPForUnity.Editor.Tools
                 return new { status = "error", message = $"Material already exists at {materialPath}" };
             }
             
-            // Ensure directory exists
+            // Ensure directory exists in Unity's asset database
             string directory = System.IO.Path.GetDirectoryName(materialPath);
             if (!string.IsNullOrEmpty(directory))
             {
                 // Normalize path separators (Path.GetDirectoryName may return backslashes on Windows)
                 directory = directory.Replace('\\', '/');
                 
-                // Convert Assets/ path to file system path
-                // Remove "Assets/" prefix if present and combine with Application.dataPath (which points to Assets folder)
-                string relativeDir = directory;
-                if (relativeDir.StartsWith("Assets/", System.StringComparison.OrdinalIgnoreCase))
+                // Ensure folder exists in Unity's asset database (recursively creates if needed)
+                if (!EnsureFolderExists(directory))
                 {
-                    relativeDir = relativeDir.Substring("Assets/".Length);
-                }
-                string fullDirectoryPath = System.IO.Path.Combine(UnityEngine.Application.dataPath, relativeDir);
-                
-                if (!System.IO.Directory.Exists(fullDirectoryPath))
-                {
-                    System.IO.Directory.CreateDirectory(fullDirectoryPath);
-                    AssetDatabase.Refresh(); // Make sure Unity knows about the new folder
+                    return new { status = "error", message = $"Failed to create directory structure for {materialPath}. Parent directory must exist before creating asset." };
                 }
             }
             
