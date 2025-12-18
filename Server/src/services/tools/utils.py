@@ -58,3 +58,32 @@ def parse_json_payload(value: Any) -> Any:
     except (json.JSONDecodeError, ValueError):
         # If parsing fails, assume it was meant to be a literal string
         return value
+
+
+def to_camel_case(snake_str: str) -> str:
+    """
+    Convert snake_case to camelCase.
+    
+    Args:
+        snake_str: String in snake_case format (e.g., "search_method")
+        
+    Returns:
+        String in camelCase format (e.g., "searchMethod")
+    """
+    components = snake_str.split('_')
+    return components[0] + ''.join(x.capitalize() for x in components[1:])
+
+
+def convert_params_to_camel_case(params: dict[str, Any]) -> dict[str, Any]:
+    """
+    Convert all parameter keys from snake_case to camelCase.
+    
+    This is used to convert Python-style parameter names to Unity C# expected format.
+    
+    Args:
+        params: Dictionary with snake_case keys
+        
+    Returns:
+        Dictionary with camelCase keys
+    """
+    return {to_camel_case(k): v for k, v in params.items()}

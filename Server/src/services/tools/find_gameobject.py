@@ -7,7 +7,7 @@ from typing import Annotated, Any, Literal
 from fastmcp import Context
 from services.registry import mcp_for_unity_tool
 from services.tools import get_unity_instance_from_context
-from services.tools.utils import coerce_bool
+from services.tools.utils import coerce_bool, convert_params_to_camel_case
 from transport.legacy.unity_connection import async_send_command_with_retry
 from transport.unity_transport import send_with_unity_instance
 
@@ -63,6 +63,9 @@ async def find_gameobject(
         params["search_inactive"] = parsed_include_inactive
     if parsed_search_children:
         params["search_in_children"] = parsed_search_children
+
+    # Convert snake_case keys to camelCase for Unity bridge
+    params = convert_params_to_camel_case(params)
 
     # Send directly to Unity
     return await send_with_unity_instance(

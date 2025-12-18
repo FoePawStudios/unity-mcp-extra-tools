@@ -50,6 +50,7 @@ def register_all_tools(mcp: FastMCP):
             return
 
         logger.info(f"Found {len(tools)} tools to register")
+        registered_count = 0
         for tool_info in tools:
             func = tool_info['func']
             tool_name = tool_info['name']
@@ -64,11 +65,13 @@ def register_all_tools(mcp: FastMCP):
                     name=tool_name, description=description, **kwargs)(wrapped)
                 tool_info['func'] = wrapped
                 logger.debug(f"Registered tool: {tool_name} - {description}")
+                registered_count += 1
             except Exception as e:
                 logger.error(f"Failed to register tool {tool_name}: {e}", exc_info=True)
+                # Continue with next tool instead of stopping
 
-        logger.info(f"Registered {len(tools)} MCP tools")
-        print(f"Registered {len(tools)} MCP tools", file=sys.stderr)
+        logger.info(f"Registered {registered_count} of {len(tools)} MCP tools")
+        print(f"Registered {registered_count} of {len(tools)} MCP tools", file=sys.stderr)
     except Exception as e:
         logger.error(f"Fatal error during tool registration: {e}", exc_info=True)
         print(f"FATAL ERROR during tool registration: {e}", file=sys.stderr)

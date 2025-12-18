@@ -7,7 +7,7 @@ from typing import Annotated, Any
 from fastmcp import Context
 from services.registry import mcp_for_unity_tool
 from services.tools import get_unity_instance_from_context
-from services.tools.utils import parse_json_payload
+from services.tools.utils import parse_json_payload, convert_params_to_camel_case
 from transport.legacy.unity_connection import async_send_command_with_retry
 from transport.unity_transport import send_with_unity_instance
 
@@ -55,6 +55,9 @@ async def add_component(
         # Unity bridge expects component_properties in format:
         # {"ComponentTypeName": {"property1": value1, "property2": value2}}
         params["component_properties"] = {component_type: parsed_properties}
+
+    # Convert snake_case keys to camelCase for Unity bridge
+    params = convert_params_to_camel_case(params)
 
     # Send directly to Unity
     return await send_with_unity_instance(

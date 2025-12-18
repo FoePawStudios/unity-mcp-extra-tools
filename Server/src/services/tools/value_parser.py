@@ -75,9 +75,10 @@ def parse_vector3(value: list[float] | str | None, default: list[float] | None =
     
     Accepts:
     - Lists: [1, 2, 3]
-    - JSON strings: '[1, 2, 3]' or '[1,2,3]'
-    - Comma-separated: '1,2,3' or '1, 2, 3'
-    - Bracket strings: '[1,2,3]' (strips brackets)
+    - JSON array strings: '[1, 2, 3]' or '[1,2,3]' (must include brackets)
+    
+    Does NOT accept:
+    - Comma-separated strings without brackets: '1,2,3' (will return None)
     
     Args:
         value: Input value to parse
@@ -113,18 +114,21 @@ def parse_vector3(value: list[float] | str | None, default: list[float] | None =
     if isinstance(parsed, list) and len(parsed) == 3:
         return _to_vec3(parsed)
     
-    # Handle comma-separated strings
+    # For strings, only accept JSON array format with brackets
+    # Reject plain comma-separated strings like "10,2,0"
     if isinstance(value, str):
         stripped = value.strip()
-        # Remove brackets if present
-        if stripped.startswith("[") and stripped.endswith("]"):
-            stripped = stripped[1:-1].strip()
+        # Must start and end with brackets to be valid
+        if not (stripped.startswith("[") and stripped.endswith("]")):
+            # Reject comma-separated strings without brackets
+            return default
         
-        # Try comma or space separation
-        if "," in stripped:
-            parts = [p.strip() for p in stripped.split(",")]
+        # Parse the content inside brackets
+        content = stripped[1:-1].strip()
+        if "," in content:
+            parts = [p.strip() for p in content.split(",")]
         else:
-            parts = stripped.split()
+            parts = content.split()
         
         if len(parts) == 3:
             return _to_vec3(parts)
@@ -170,10 +174,18 @@ def parse_color(value: list[float] | str | None, default: list[float] | None = N
                 return default
             
             # Detect if values are in 0-255 range and convert to 0-1
-            if r > 1.0 or g > 1.0 or b > 1.0 or a > 1.0:
-                r, g, b, a = r / 255.0, g / 255.0, b / 255.0, (a / 255.0 if a > 1.0 else a)
+            # Only convert if ALL RGB components are > 1.0 AND within 0-255 range
+            # This avoids incorrectly converting edge cases like [1.5, 0, 0, 1] where
+            # the user might want HDR colors or values outside normal 0-1 range
+            rgb_values = [r, g, b]
+            if all(1.0 < val <= 255.0 for val in rgb_values):
+                # All RGB components are in 0-255 range, convert them
+                r, g, b = r / 255.0, g / 255.0, b / 255.0
+                # Convert alpha only if it's also in 0-255 range
+                if 1.0 < a <= 255.0:
+                    a = a / 255.0
             
-            # Clamp to valid range
+            # Clamp to valid range (0-1 for Unity Color)
             r = max(0.0, min(1.0, r))
             g = max(0.0, min(1.0, g))
             b = max(0.0, min(1.0, b))

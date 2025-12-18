@@ -7,7 +7,7 @@ from typing import Annotated, Any
 from fastmcp import Context
 from services.registry import mcp_for_unity_tool
 from services.tools import get_unity_instance_from_context
-from services.tools.utils import coerce_bool, parse_json_payload
+from services.tools.utils import coerce_bool, parse_json_payload, convert_params_to_camel_case
 from transport.legacy.unity_connection import async_send_command_with_retry
 from transport.unity_transport import send_with_unity_instance
 
@@ -22,9 +22,9 @@ from .value_parser import parse_vector3
 async def create_gameobject(
     ctx: Context,
     name: Annotated[str, "GameObject name (required)"],
-    position: Annotated[list[float] | str | None, "World position [x, y, z] (optional, default: [0, 0, 0])"] = None,
-    rotation: Annotated[list[float] | str | None, "Euler rotation [x, y, z] in degrees (optional, default: [0, 0, 0])"] = None,
-    scale: Annotated[list[float] | str | None, "Scale [x, y, z] (optional, default: [1, 1, 1])"] = None,
+    position: Annotated[list[float] | str | None, "World position as array [x, y, z] or JSON array string '[x, y, z]' (required brackets, not comma-separated) (optional, default: [0, 0, 0])"] = None,
+    rotation: Annotated[list[float] | str | None, "Euler rotation as array [x, y, z] or JSON array string '[x, y, z]' (required brackets, not comma-separated) in degrees (optional, default: [0, 0, 0])"] = None,
+    scale: Annotated[list[float] | str | None, "Scale as array [x, y, z] or JSON array string '[x, y, z]' (required brackets, not comma-separated) (optional, default: [1, 1, 1])"] = None,
     parent: Annotated[str | None, "Parent GameObject name or path (optional)"] = None,
     tag: Annotated[str | None, "Tag name (optional)"] = None,
     layer: Annotated[str | None, "Layer name (optional)"] = None,
@@ -39,11 +39,26 @@ async def create_gameobject(
     if not is_valid:
         return {"success": False, "message": error_msg or "Invalid GameObject name"}
 
-    # Parse vector parameters
+    # Parse vector parameters with validation
     parsed_position = parse_vector3(position)
+    if position is not None and parsed_position is None:
+        return {"success": False, "message": "Position must be an array [x, y, z] or JSON array string '[x, y, z]', not a comma-separated string"}
+    
     parsed_rotation = parse_vector3(rotation)
+    if rotation is not None and parsed_rotation is None:
+        return {"success": False, "message": "Rotation must be an array [x, y, z] or JSON array string '[x, y, z]', not a comma-separated string"}
+    
     parsed_scale = parse_vector3(scale)
-    parsed_active = coerce_bool(active, default=True)
+    if scale is not None and parsed_scale is None:
+        return {"success": False, "message": "Scale must be an array [x, y, z] or JSON array string '[x, y, z]', not a comma-separated string"}
+    
+    # Parse active state - only use default if not explicitly provided
+    parsed_active = coerce_bool(active) if active is not None else None
+    
+    # Validate primitive type if provided
+    valid_primitive_types = {"Cube", "Sphere", "Capsule", "Cylinder", "Plane", "Quad"}
+    if primitive_type and primitive_type not in valid_primitive_types:
+        return {"success": False, "message": f"Invalid primitive_type '{primitive_type}'. Must be one of: {', '.join(valid_primitive_types)}"}
 
     # Transform simplified parameters to Unity bridge format
     params: dict[str, Any] = {
@@ -63,10 +78,14 @@ async def create_gameobject(
         params["tag"] = tag
     if layer:
         params["layer"] = layer
+    # Only send setActive if explicitly provided (not using default)
     if parsed_active is not None:
         params["set_active"] = parsed_active
     if primitive_type:
         params["primitive_type"] = primitive_type
+
+    # Convert snake_case keys to camelCase for Unity bridge
+    params = convert_params_to_camel_case(params)
 
     # Send directly to Unity
     return await send_with_unity_instance(
