@@ -489,14 +489,55 @@ namespace MCPForUnity.Editor.Tools
             bool? setActive = null;
             if (@params["setActive"] != null)
             {
-                try
+                JToken setActiveToken = @params["setActive"];
+                // Validate type before conversion
+                if (setActiveToken.Type == JTokenType.Boolean)
                 {
-                    setActive = @params["setActive"].ToObject<bool?>();
+                    setActive = setActiveToken.ToObject<bool?>();
                 }
-                catch
+                else if (setActiveToken.Type == JTokenType.String)
                 {
-                    // If conversion fails (e.g., invalid type), ignore the parameter
-                    // This provides graceful error handling instead of throwing an exception
+                    // Try to parse string representations of boolean
+                    string setActiveStr = setActiveToken.ToString().Trim().ToLowerInvariant();
+                    if (setActiveStr == "true" || setActiveStr == "1" || setActiveStr == "yes")
+                    {
+                        setActive = true;
+                    }
+                    else if (setActiveStr == "false" || setActiveStr == "0" || setActiveStr == "no")
+                    {
+                        setActive = false;
+                    }
+                    else
+                    {
+                        return new ErrorResponse(
+                            $"Invalid value for 'setActive' parameter: '{setActiveToken}'. Expected boolean (true/false) or string representation (\"true\"/\"false\")."
+                        );
+                    }
+                }
+                else if (setActiveToken.Type == JTokenType.Integer)
+                {
+                    // Allow 0/1 as boolean representation
+                    int intValue = setActiveToken.ToObject<int>();
+                    if (intValue == 0)
+                    {
+                        setActive = false;
+                    }
+                    else if (intValue == 1)
+                    {
+                        setActive = true;
+                    }
+                    else
+                    {
+                        return new ErrorResponse(
+                            $"Invalid value for 'setActive' parameter: '{setActiveToken}'. Expected boolean (true/false) or integer (0/1)."
+                        );
+                    }
+                }
+                else
+                {
+                    return new ErrorResponse(
+                        $"Invalid type for 'setActive' parameter: expected boolean, got {setActiveToken.Type}. Value: '{setActiveToken}'."
+                    );
                 }
             }
             if (setActive.HasValue)

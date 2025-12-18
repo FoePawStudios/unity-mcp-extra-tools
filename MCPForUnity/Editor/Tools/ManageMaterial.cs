@@ -84,6 +84,12 @@ namespace MCPForUnity.Editor.Tools
             // Normalize path separators
             folderPath = folderPath.Replace('\\', '/').Trim('/');
             
+            // Handle "Assets" root folder as a special case - it always exists
+            if (string.Equals(folderPath, "Assets", StringComparison.OrdinalIgnoreCase))
+            {
+                return true; // Assets root folder always exists
+            }
+            
             // Ensure it starts with Assets/
             if (!folderPath.StartsWith("Assets/", StringComparison.OrdinalIgnoreCase))
             {
