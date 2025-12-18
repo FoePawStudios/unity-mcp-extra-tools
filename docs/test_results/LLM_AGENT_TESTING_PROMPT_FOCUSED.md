@@ -36,9 +36,9 @@ Once cleanup is complete, proceed with the testing plan below.
 Most tools have been fixed and are working correctly. The following tools need testing after recent fixes:
 
 1. **`set_component_properties`**: Needs comprehensive testing to verify it works correctly
-2. **`create_material`**: ✅ **FIXED** - Folder creation now uses `AssetDatabase.CreateFolder` with recursive parent creation. **NEEDS TESTING** to verify the fix works correctly
-3. **`load_scene`**: ✅ **FIXED** - Path normalization added using `AssetPathUtility.SanitizeAssetPath`. **NEEDS TESTING** to verify the fix works correctly
-4. **`set_material_color`**: ✅ **UNBLOCKED** - Can now test since `create_material` has been fixed
+2. **`create_material`**: ✅ **FIXED** - Now requires parent folders to exist (created via `manage_asset`). Returns clear error if folder doesn't exist. **NEEDS TESTING** to verify the fix works correctly
+3. **`load_scene`**: ✅ **FIXED** - Path normalization and construction logic improved. **NEEDS TESTING** to verify the fix works correctly
+4. **`set_material_color`**: ✅ **FIXED** - Color parsing now correctly handles 0-255 range colors with zero components. **NEEDS TESTING** to verify the fix works correctly
 5. **`assign_material`**: ✅ **UNBLOCKED** - Can now test since `create_material` has been fixed
 
 ## Testing Guidelines
@@ -138,25 +138,29 @@ Test cases:
 
 ### Tool: `create_material`
 
-**Note**: This tool has been **FIXED**. Folder creation now uses `AssetDatabase.CreateFolder` with recursive parent folder creation. **NEEDS TESTING** to verify the fix works correctly.
+**Note**: This tool has been **FIXED**. It now requires parent folders to exist before creating materials (created via `manage_asset` with `action: create_folder`). **NEEDS TESTING** to verify the fix works correctly.
 
 **Recent Fix**: 
-- Replaced `Directory.CreateDirectory` with `AssetDatabase.CreateFolder`
-- Implemented recursive `EnsureFolderExists` helper method that creates parent folders recursively
-- Uses `AssetDatabase.IsValidFolder()` to check folder existence in Unity's asset database
-- Removed `AssetDatabase.Refresh()` call (CreateFolder handles it internally)
+- Removed recursive folder creation code
+- Now checks if parent directory exists using `AssetDatabase.IsValidFolder()`
+- Returns clear error message if folder doesn't exist, directing users to create folders first
+- Tool description updated to set expectation that paths must exist
 
 **Previous Error**: "Parent directory must exist before creating asset"
 
+**IMPORTANT**: Before testing, ensure parent folders exist. Use `manage_asset` with `action: create_folder` to create folders if needed.
+
 Test cases:
-1. ✅ Create with path only: `{"materialPath": "Assets/Materials/TestMaterial_001.mat"}`
-   - **Expected**: Should create Materials folder if it doesn't exist, then create material
+1. ✅ Create with existing folder: `{"materialPath": "Assets/Materials/TestMaterial_001.mat"}`
+   - **Prerequisites**: Create `Assets/Materials/` folder first using `manage_asset` with `action: create_folder`
+   - **Expected**: Should create material successfully
    - **Previous issue**: Failed with "Parent directory must exist before creating asset"
-   - **Fix applied**: Recursive folder creation using `AssetDatabase.CreateFolder`
+   - **Fix applied**: Clear error message now directs users to create folders first
 
 2. ✅ Create with nested path: `{"materialPath": "Assets/Materials/SubFolder/TestMaterial_002.mat"}`
-   - **Expected**: Should create both Materials and SubFolder folders if they don't exist
-   - **Fix applied**: Recursive parent folder creation
+   - **Prerequisites**: Create `Assets/Materials/SubFolder/` folder structure first
+   - **Expected**: Should create material successfully if folder exists
+   - **Fix applied**: Returns clear error if folder doesn't exist
 
 3. ✅ Create with shader: `{"materialPath": "Assets/Materials/TestMaterial_003.mat", "shader": "Standard"}`
    - **Expected**: Should create material with specified shader
@@ -167,28 +171,56 @@ Test cases:
 5. ✅ Create with properties: `{"materialPath": "Assets/Materials/TestMaterial_005.mat", "properties": {"_Metallic": 0.5}}`
    - **Expected**: Should create material with specified properties
 
-6. ❌ Invalid path: `{"materialPath": "Invalid/Path.mat"}`
+6. ❌ Create without parent folder (should fail gracefully): `{"materialPath": "Assets/Materials/TestMaterial_006.mat"}`
+   - **Prerequisites**: Ensure `Assets/Materials/` folder does NOT exist
+   - **Expected**: Should return clear error message directing user to create folder first
+
+7. ❌ Invalid path: `{"materialPath": "Invalid/Path.mat"}`
    - **Expected**: Should return clear error message
 
-7. ❌ Invalid shader: `{"materialPath": "Assets/Materials/Test.mat", "shader": "NonExistentShader"}`
+8. ❌ Invalid shader: `{"materialPath": "Assets/Materials/Test.mat", "shader": "NonExistentShader"}`
    - **Expected**: Should return clear error message about shader not found
 
 ---
 
 ### Tool: `set_material_color`
 
-**Status**: ✅ **UNBLOCKED** - Can now test since `create_material` has been fixed.
+**Status**: ✅ **FIXED** - Color parsing now correctly handles 0-255 range colors with zero components. **NEEDS TESTING** to verify the fix works correctly.
 
-**Prerequisites**: Create a material first using `create_material`.
+**Recent Fix**: 
+- Fixed color parsing heuristic to correctly detect 0-255 range colors even when some RGB components are zero
+- Changed detection from `all(1.0 < val <= 255.0)` to `any(val > 1.0) and all(0.0 <= val <= 255.0)`
+- Now correctly converts colors like `[128, 0, 0, 255]` to `[0.5, 0, 0, 1]` instead of incorrectly clamping
 
-Planned test cases (when material creation works):
-1. Set color (array 0-1): `{"materialPath": "Assets/Materials/TestMaterial_001.mat", "color": [0, 1, 0, 1]}`
-2. Set color (array 0-255): `{"materialPath": "Assets/Materials/TestMaterial_001.mat", "color": [0, 255, 0, 255]}` - Should convert to [0, 1, 0, 1]
-3. Set color (JSON string): `{"materialPath": "Assets/Materials/TestMaterial_001.mat", "color": "[0,1,0,1]"}`
-4. Set color with alpha: `{"materialPath": "Assets/Materials/TestMaterial_001.mat", "color": [1, 1, 0, 0.5]}`
-5. Set HDR color (edge case): `{"materialPath": "Assets/Materials/TestMaterial_001.mat", "color": [1.5, 0, 0, 1]}` - Should preserve 1.5 (not convert to 0-255 range)
-6. Non-existent material: `{"materialPath": "Assets/Materials/NonExistent.mat", "color": [1, 0, 0, 1]}`
-7. Invalid format: `{"materialPath": "Assets/Materials/TestMaterial_001.mat", "color": "invalid"}`
+**Prerequisites**: Create a material first using `create_material` (with folder already created).
+
+Test cases:
+1. ✅ Set color (array 0-1): `{"materialPath": "Assets/Materials/TestMaterial_001.mat", "color": [0, 1, 0, 1]}`
+   - **Expected**: Should set color correctly
+
+2. ✅ Set color (array 0-255): `{"materialPath": "Assets/Materials/TestMaterial_001.mat", "color": [0, 255, 0, 255]}`
+   - **Expected**: Should convert to [0, 1, 0, 1] automatically
+   - **Previous issue**: Colors with zero components like `[128, 0, 0, 255]` were incorrectly clamped
+   - **Fix applied**: Zero components are now correctly identified as being in 0-255 range
+
+3. ✅ Set color with zero components (edge case): `{"materialPath": "Assets/Materials/TestMaterial_001.mat", "color": [128, 0, 0, 255]}`
+   - **Expected**: Should convert to [0.5, 0, 0, 1] (medium red with zero green and blue)
+   - **This test verifies the zero-component fix**
+
+4. ✅ Set color (JSON string): `{"materialPath": "Assets/Materials/TestMaterial_001.mat", "color": "[0,1,0,1]"}`
+   - **Expected**: Should parse JSON string and set color correctly
+
+5. ✅ Set color with alpha: `{"materialPath": "Assets/Materials/TestMaterial_001.mat", "color": [1, 1, 0, 0.5]}`
+   - **Expected**: Should set color with alpha channel
+
+6. ✅ Set HDR color (edge case): `{"materialPath": "Assets/Materials/TestMaterial_001.mat", "color": [1.5, 0, 0, 1]}`
+   - **Expected**: Should preserve 1.5 (not convert to 0-255 range since 1.5 is not <= 255.0)
+
+7. ❌ Non-existent material: `{"materialPath": "Assets/Materials/NonExistent.mat", "color": [1, 0, 0, 1]}`
+   - **Expected**: Should return clear error message
+
+8. ❌ Invalid format: `{"materialPath": "Assets/Materials/TestMaterial_001.mat", "color": "invalid"}`
+   - **Expected**: Should return clear error message
 
 ---
 
@@ -213,9 +245,9 @@ Planned test cases (when material creation works):
 
 ### Tools Needing Testing (Fixed but Not Verified):
 1. **`set_component_properties`**: Needs comprehensive testing (parameter mapping fixed, but not fully tested)
-2. **`create_material`**: ✅ **FIXED** - Folder creation now uses `AssetDatabase.CreateFolder` with recursive parent creation. **NEEDS TESTING** to verify fix works
-3. **`load_scene`**: ✅ **FIXED** - Path normalization added using `AssetPathUtility.SanitizeAssetPath`. **NEEDS TESTING** to verify fix works
-4. **`set_material_color`**: ✅ **UNBLOCKED** - Can now test since `create_material` is fixed
+2. **`create_material`**: ✅ **FIXED** - Now requires parent folders to exist (created via `manage_asset`). Returns clear error if folder doesn't exist. **NEEDS TESTING** to verify fix works
+3. **`load_scene`**: ✅ **FIXED** - Path normalization and construction logic improved. **NEEDS TESTING** to verify fix works
+4. **`set_material_color`**: ✅ **FIXED** - Color parsing now correctly handles 0-255 range colors with zero components. **NEEDS TESTING** to verify fix works
 5. **`assign_material`**: ✅ **UNBLOCKED** - Can now test since `create_material` is fixed
 
 ---
@@ -239,18 +271,25 @@ Planned test cases (when material creation works):
 
 ## Recent Fixes Applied
 
-1. **`create_material` folder creation**: ✅ **FIXED**
-   - Replaced `Directory.CreateDirectory` with `AssetDatabase.CreateFolder`
-   - Implemented recursive `EnsureFolderExists` helper method
+1. **`create_material` folder handling**: ✅ **FIXED**
+   - Removed recursive folder creation code to simplify tool and avoid merge conflicts
+   - Now requires parent folders to exist before creating materials
    - Uses `AssetDatabase.IsValidFolder()` to check folder existence
-   - Removed `AssetDatabase.Refresh()` call (CreateFolder handles it)
+   - Returns clear error message directing users to create folders via `manage_asset` with `action: create_folder`
+   - Tool description updated to set expectation that paths must exist
 
 2. **`load_scene` path resolution**: ✅ **FIXED**
-   - Added early path normalization using `AssetPathUtility.SanitizeAssetPath()`
-   - Ensures `.unity` extension is added if missing
-   - Fixed `relativePath` assignment to use normalized path
+   - Fixed path normalization inconsistency (Windows backslashes now normalized to forward slashes)
+   - Improved path construction logic to prioritize `path` parameter
+   - Fixed path duplication issue when loading by name
+   - Path validation distinguishes between paths (containing '/') and scene names
 
-3. **`set_component_properties`**:
+3. **`set_material_color` color parsing**: ✅ **FIXED**
+   - Fixed color parsing heuristic to correctly detect 0-255 range colors with zero components
+   - Changed from `all(1.0 < val <= 255.0)` to `any(val > 1.0) and all(0.0 <= val <= 255.0)`
+   - Now correctly converts colors like `[128, 0, 0, 255]` instead of incorrectly clamping
+
+4. **`set_component_properties`**:
    - Needs comprehensive testing to verify it works correctly
    - Test edge cases (empty dict, invalid properties, etc.)
 
@@ -258,7 +297,8 @@ Planned test cases (when material creation works):
 
 **START HERE**: First perform the Initial Cleanup steps described above, then begin testing with:
 1. `set_component_properties` (should work, needs verification)
-2. `create_material` (recently fixed, needs testing to verify)
+2. `create_material` (recently fixed - requires folders to exist, needs testing to verify)
 3. `load_scene` (recently fixed, needs testing to verify)
-4. `set_material_color` and `assign_material` (now unblocked, can test)
+4. `set_material_color` (recently fixed - color parsing improved, needs testing to verify)
+5. `assign_material` (now unblocked, can test)
 
