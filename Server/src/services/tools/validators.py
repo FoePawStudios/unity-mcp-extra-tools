@@ -66,7 +66,7 @@ def validate_scene_path(scene_path: str | None) -> tuple[bool, str | None]:
     Validate scene path format.
     
     Args:
-        scene_path: Scene path (e.g., "Assets/Scenes/Main.unity" or "Main")
+        scene_path: Scene path (e.g., "Assets/Scenes/Main.unity", "Assets/Scenes/Main", or "Main")
         
     Returns:
         Tuple of (is_valid, error_message)
@@ -82,11 +82,20 @@ def validate_scene_path(scene_path: str | None) -> tuple[bool, str | None]:
     if len(scene_path) == 0:
         return False, "Scene path cannot be whitespace only"
     
-    # Scene paths should end with .unity or be a scene name
-    if scene_path.endswith(".unity"):
-        # Full path like "Assets/Scenes/Main.unity"
-        if not re.match(r"^Assets/.*\.unity$", scene_path):
-            return False, "Scene path must start with 'Assets/' and end with '.unity'"
+    # Check if it's a path (starts with Assets/) or a scene name
+    if scene_path.startswith("Assets/"):
+        # Path format - Unity will automatically add .unity extension if missing
+        # Validate path doesn't contain invalid characters
+        invalid_chars = ['<', '>', ':', '"', '|', '?', '*']
+        for char in invalid_chars:
+            if char in scene_path:
+                return False, f"Scene path contains invalid character: '{char}'"
+        
+        # If it ends with .unity, ensure it's a valid path format
+        if scene_path.endswith(".unity"):
+            if not re.match(r"^Assets/.*\.unity$", scene_path):
+                return False, "Scene path must start with 'Assets/' and end with '.unity'"
+        # Otherwise, it's a valid path without extension (Unity will add it)
     else:
         # Scene name only - validate it's a reasonable name
         if not re.match(r"^[a-zA-Z][a-zA-Z0-9_]*$", scene_path):
