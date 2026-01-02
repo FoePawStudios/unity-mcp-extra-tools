@@ -87,3 +87,20 @@ def convert_params_to_camel_case(params: dict[str, Any]) -> dict[str, Any]:
         Dictionary with camelCase keys
     """
     return {to_camel_case(k): v for k, v in params.items()}
+
+
+def coerce_int(value: Any, default: int | None = None) -> int | None:
+    """Attempt to coerce a loosely-typed value to an integer."""
+    if value is None:
+        return default
+    try:
+        if isinstance(value, bool):
+            return default
+        if isinstance(value, int):
+            return value
+        s = str(value).strip()
+        if s.lower() in ("", "none", "null"):
+            return default
+        return int(float(s))
+    except Exception:
+        return default
